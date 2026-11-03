@@ -1,0 +1,20 @@
+{
+  "name": "docugraph-monorepo",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DocuGraph AI – Multi-layer Knowledge Assistant",
+  "scripts": {
+    "dev:frontend": "cd frontend && pnpm dev",
+    "dev:backend": "cd backend && uvicorn app.main:app --reload --port 8000",
+    "dev": "concurrently \"pnpm dev:frontend\" \"pnpm dev:backend\"",
+    "build:frontend": "cd frontend && pnpm build",
+    "lint:frontend": "cd frontend && pnpm lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
+

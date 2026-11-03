@@ -1,0 +1,20 @@
+# ── Python Backend ─────────────────────────────────────────────
+backend/.env
+backend/__pycache__/
+backend/**/__pycache__/
+backend/*.pyc
+backend/.venv/
+backend/venv/
+backend/*.egg-info/
+
+# ── Node / Next.js Frontend ────────────────────────────────────
+frontend/.env.local
+frontend/.next/
+frontend/node_modules/
+frontend/out/
+
+# ── Root ────────────────────────────────────────────────────────
+node_modules/
+.DS_Store
+*.log
+

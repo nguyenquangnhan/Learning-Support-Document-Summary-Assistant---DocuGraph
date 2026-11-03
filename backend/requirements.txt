@@ -1,0 +1,47 @@
+# ============================================================
+# DocuGraph AI – Backend Dependencies (pinned versions)
+# Python 3.11+  |  Install: pip install -r requirements.txt
+# ============================================================
+
+# --- Web Framework ---
+fastapi==0.162.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.33
+httpx==0.28.1
+
+# --- Task Queue ---
+celery==5.6.3
+redis==8.1.0
+
+# --- AI / LLM ---
+# google-generativeai is DEPRECATED — use google-genai instead
+google-genai==2.34.0
+
+# PaddleOCR – install separately (heavy, optional on first setup):
+#   pip install paddlepaddle paddleocr
+# paddlepaddle==2.6.2
+# paddleocr==2.9.1
+
+# --- Database ---
+asyncpg==0.32.0
+sqlalchemy[asyncio]==2.1.6
+alembic==1.20.1
+pgvector==0.5.1
+neo4j==6.4.1
+
+# --- Supabase ---
+supabase==2.33.0
+
+# --- Document Processing ---
+pypdf==6.21.4
+python-docx==1.2.0
+Pillow==13.0.0
+opencv-python-headless==5.0.0.93
+
+# --- Utilities ---
+pydantic==2.14.2
+pydantic-settings==2.16.2
+python-jose[cryptography]==3.5.0
+passlib[bcrypt]==1.7.4
+tenacity==9.2.1
+structlog==26.1.0
