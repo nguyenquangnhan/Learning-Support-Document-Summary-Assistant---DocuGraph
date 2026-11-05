@@ -1,53 +1,43 @@
 {
-  "name": "docugraph-frontend",
-  "version": "0.1.0",
-  "private": true,
+  "name": "docugraph-mobile",
+  "main": "expo-router/entry",
+  "version": "1.0.0",
   "scripts": {
-    "dev": "next dev --port 3000",
-    "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "expo start",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "web": "expo start --web"
   },
   "dependencies": {
-    "next": "^15.3.3",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-
-    "@supabase/supabase-js": "^2.46.2",
-    "@supabase/ssr": "^0.5.2",
-
-    "cytoscape": "^3.30.2",
-    "react-cytoscapejs": "^2.0.0",
-    "d3": "^7.9.0",
-
-    "react-markdown": "^9.0.1",
-    "remark-gfm": "^4.0.0",
-    "rehype-katex": "^7.0.1",
-    "remark-math": "^6.0.0",
-    "katex": "^0.16.11",
-
-    "react-syntax-highlighter": "^15.6.1",
-
-    "@tanstack/react-query": "^5.62.7",
-    "zustand": "^5.0.1",
-    "axios": "^1.7.8",
-
-    "lucide-react": "^0.460.0",
+    "@react-native-async-storage/async-storage": "1.23.1",
+    "@supabase/supabase-js": "^2.48.0",
+    "@tanstack/react-query": "^5.66.0",
+    "axios": "^1.7.9",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4"
+    "expo": "~52.0.0",
+    "expo-constants": "~17.0.0",
+    "expo-linking": "~7.0.0",
+    "expo-router": "~4.0.0",
+    "expo-secure-store": "~14.0.1",
+    "expo-status-bar": "~2.0.0",
+    "lucide-react-native": "^0.475.0",
+    "nativewind": "^4.0.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.7",
+    "react-native-reanimated": "~3.16.7",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-svg": "15.8.0",
+    "react-native-webview": "13.12.5",
+    "tailwind-merge": "^2.5.4",
+    "zustand": "^5.0.3"
   },
   "devDependencies": {
-    "typescript": "^5",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/cytoscape": "^3.21.7",
-    "@types/d3": "^7.4.3",
-    "@types/react-syntax-highlighter": "^15.5.13",
-    "tailwindcss": "^3.4.15",
-    "postcss": "^8",
-    "autoprefixer": "^10.4.20",
-    "eslint": "^8",
-    "eslint-config-next": "^15.3.3"
-  }
+    "@babel/core": "^7.25.2",
+    "@types/react": "~18.3.12",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.3.3"
+  },
+  "private": true
 }

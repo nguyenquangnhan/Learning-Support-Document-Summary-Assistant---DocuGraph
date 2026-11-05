@@ -1,4 +1,4 @@
-# ── Python Backend ─────────────────────────────────────────────
+# ── Python Backend ────────────────────────────────────────────────────
 backend/.env
 backend/__pycache__/
 backend/**/__pycache__/
@@ -6,15 +6,22 @@ backend/*.pyc
 backend/.venv/
 backend/venv/
 backend/*.egg-info/
+backend/migrations/
 
-# ── Node / Next.js Frontend ────────────────────────────────────
+# ── Node / React Native / Expo Frontend ──────────────────────────────
 frontend/.env.local
+frontend/.env
 frontend/.next/
 frontend/node_modules/
 frontend/out/
+frontend/.expo/
+frontend/dist/
+frontend/android/
+frontend/ios/
 
-# ── Root ────────────────────────────────────────────────────────
+# ── Root ──────────────────────────────────────────────────────────────
 node_modules/
 .DS_Store
 *.log
-
+.env
+*.pyc

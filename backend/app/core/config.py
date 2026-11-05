@@ -11,22 +11,22 @@ class Settings(BaseSettings):
     APP_SECRET_KEY: str = "change-me"
 
     # Gemini
-    GEMINI_API_KEY: str
+    GEMINI_API_KEY: str = "mock-gemini-key"
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
 
     # Neo4j
-    NEO4J_URI: str
+    NEO4J_URI: str = "bolt://localhost:7687"
     NEO4J_USERNAME: str = "neo4j"
-    NEO4J_PASSWORD: str
+    NEO4J_PASSWORD: str = "password"
 
     # PostgreSQL
-    POSTGRES_URL: str
+    POSTGRES_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docugraph"
 
     # Supabase
-    SUPABASE_URL: str
-    SUPABASE_ANON_KEY: str
-    SUPABASE_SERVICE_ROLE_KEY: str
+    SUPABASE_URL: str = "https://your-project.supabase.co"
+    SUPABASE_ANON_KEY: str = "mock-anon-key"
+    SUPABASE_SERVICE_ROLE_KEY: str = "mock-service-role-key"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
