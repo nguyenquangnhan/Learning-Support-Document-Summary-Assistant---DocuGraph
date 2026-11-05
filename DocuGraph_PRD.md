@@ -335,21 +335,22 @@ Sinh viên, chuyên gia và tổ chức hiện nay đang chìm ngập trong kho 
 
 ### 🤖 Tool & API Requirements
 
-#### 🖥️ Frontend & Mobile
+#### 🖥️ Frontend & Mobile (Cross-Platform Mobile App)
 
 | Công nghệ | Phiên bản | Mục đích |
 |-----------|-----------|----------|
-| **Next.js** | 15 (React 19) | Web Dashboard – SSR/SSG, SEO tối ưu, API Routes cho Auth & proxy |
-| **Capacitor** | Latest | Đóng gói Next.js thành Android APK / iOS native app |
-| **Google ML Kit** | On-device SDK | OCR & Vision trực tiếp trên thiết bị – hoàn toàn offline, nhận dạng chữ từ Camera, đọc mã QR |
-| **Cytoscape.js / Vis.js / D3.js** | Latest | Render và tương tác với Knowledge Graph 2D/3D – hỗ trợ zoom, pan, tap node |
+| **React Native** | 0.76+ (Expo SDK 52+) | Ứng dụng di động đa nền tảng Native 100% cho Android & iOS |
+| **Expo Router** | v4 | File-based navigation, deep linking, hỗ trợ Tabs và Stack navigation |
+| **NativeWind** | v4 | Tailwind CSS cho React Native, styling nhanh, giao diện chuẩn Mobile-First |
+| **Google ML Kit** | `@react-native-ml-kit/text-recognition` | OCR & Vision trực tiếp on-device – hoàn toàn offline, nhận dạng chữ từ Camera |
+| **react-native-webview** | Latest | Nhúng Cytoscape.js & D3.js render Knowledge Graph 2D/3D – hỗ trợ zoom, pan, tap node |
+| **Expo SQLite & MMKV** | Latest | Bộ nhớ cục bộ siêu tốc: tài liệu offline, hàng đợi đồng bộ khi mất mạng, lưu graph JSON |
 
 #### ⚙️ Backend & API Engine
 
 | Công nghệ | Phiên bản | Mục đích |
 |-----------|-----------|----------|
-| **FastAPI** | Python 3.11+ | Core backend – xử lý async pipeline: OCR → Chunking → Embedding → Graph Extraction → Storage |
-| **Next.js API Routes** | 15 | Auth middleware, phân quyền người dùng, proxy request nhẹ đến FastAPI |
+| **FastAPI** | Python 3.11+ | Core backend – xử lý async pipeline: OCR → Chunking → Embedding → Graph Extraction → Storage, SSE Streaming Q&A |
 | **Celery + Redis** | Latest | Task queue cho các pipeline xử lý tài liệu nặng (async background jobs) |
 
 #### 🤖 AI & Machine Learning
@@ -366,7 +367,7 @@ Sinh viên, chuyên gia và tổ chức hiện nay đang chìm ngập trong kho 
 |-----------|----------|
 | **Neo4j** (Graph DB) | Lưu trữ Knowledge Graph: Nodes (Concepts, Entities) + Edges (Relationships có nhãn); Multi-hop reasoning queries bằng Cypher |
 | **PostgreSQL + pgvector** | Lưu trữ Document chunks + Vector Embeddings 768D; Hybrid search: semantic similarity + structured filters |
-| **IndexedDB** (Browser/Mobile) | Local NoSQL cache: tài liệu offline, hàng đợi đồng bộ khi mất mạng, lưu graph đã render |
+| **Expo SQLite & MMKV** (Mobile Local Storage) | Bộ nhớ cục bộ siêu tốc: tài liệu offline, hàng đợi đồng bộ khi mất mạng, lưu graph JSON |
 | **Supabase Storage** | Lưu file gốc (PDF, ảnh); Supabase Auth cho session management; Supabase Realtime cho Quiz Battle |
 
 ---
@@ -478,26 +479,23 @@ USER:   [Nội dung tài liệu / tóm tắt]
 
 ```
 ╔══════════════════════════════════════════════════════════════════╗
-║          CLIENT LAYER (Web + Mobile)                             ║
+║          CLIENT LAYER: REACT NATIVE MOBILE APP (EXPO SDK 52)     ║
 ║  ┌─────────────────────────────────────────────────────────┐   ║
-║  │  Next.js 15 (React 19) – Web Dashboard (SSR/SSG)        │   ║
+║  │  React Native (Expo Router v4 + NativeWind v4)          │   ║
 ║  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌───────────┐  │   ║
 ║  │  │Auth/Login│ │KnowledgeG│ │StudyGroup│ │Quiz Battle│  │   ║
-║  │  │          │ │raph View │ │          │ │(Realtime) │  │   ║
+║  │  │(Supabase)│ │raph Canvas│ │(Shared)  │ │(Realtime) │  │   ║
 ║  │  └──────────┘ └──────────┘ └──────────┘ └───────────┘  │   ║
-║  │  Cytoscape.js / Vis.js / D3.js (Graph Visualization)    │   ║
-║  │  IndexedDB (Offline Cache & Sync Queue)                  │   ║
-║  └───────────────────────┬─────────────────────────────────┘   ║
-║                           │ Capacitor Bridge                     ║
-║  ┌────────────────────────▼────────────────────────────────┐   ║
-║  │  Android APK / iOS App (via Capacitor)                  │   ║
-║  │  Google ML Kit (On-Device OCR – Camera, offline)        │   ║
+║  │  react-native-webview (Cytoscape.js & D3.js Touch Graph)│   ║
+║  │  Google ML Kit (@react-native-ml-kit/text-recognition)  │   ║
+║  │  Local Storage: Expo SQLite & MMKV (Offline Vault)      │   ║
+║  │  State Management: Zustand 5.x + TanStack Query         │   ║
 ║  └─────────────────────────────────────────────────────────┘   ║
 ╚══════════════════════════════════════════════════════════════════╝
-                           │ HTTPS / WebSocket
+                           │ HTTPS / WebSocket (WSS)
 ╔══════════════════════════▼═══════════════════════════════════════╗
-║          API GATEWAY LAYER                                       ║
-║  Next.js 15 API Routes (Auth middleware, Proxy, Rate Limit)     ║
+║          AUTHENTICATION & GATEWAY LAYER                          ║
+║  Supabase Auth (OAuth2, JWT Verification, Expo SecureStore)      ║
 ╚══════════════════════════╦═══════════════════════════════════════╝
                            │
         ┌──────────────────▼──────────────────────┐
@@ -677,13 +675,13 @@ PRIMARY KEY (room_id, user_id, question_idx)
 | **PaddleOCR v4/v5** | Backend (FastAPI) | OCR đa tiến trình tiếng Việt: PDF scan, ảnh nghiêng, bảng biểu | Self-hosted Docker / API | Không giới hạn (self-hosted); fallback Cloud nếu cần |
 | **Neo4j Aura** | Backend (FastAPI) | Knowledge Graph storage & Cypher query (multi-hop reasoning) | Username + Password (encrypted) | Free tier: 200K nodes; Pro: unlimited |
 | **PostgreSQL + pgvector** | Backend (FastAPI) | Document chunks + Vector ANN search | Connection string (env) | Supabase managed: 500MB free |
-| **Google ML Kit** | Client (Capacitor) | On-device OCR từ Camera – hoàn toàn offline | SDK (bundle vào app) | Unlimited, on-device |
-| **Cytoscape.js / Vis.js** | Frontend (Next.js) | Render và tương tác Knowledge Graph 2D/3D | NPM package | Client-side only |
-| **Supabase Auth** | Next.js API Routes | OAuth2 Google + Email/Password, session JWT | Anon Key + Service Key | N/A |
+| **Google ML Kit** | Client (React Native) | On-device OCR từ Camera (@react-native-ml-kit/text-recognition) | Native Module | Unlimited, on-device |
+| **Cytoscape.js / Vis.js** | Client (react-native-webview) | Render và tương tác Knowledge Graph 2D/3D qua WebView | HTML/JS in WebView | Client-side only |
+| **Supabase Auth** | Client / Backend | OAuth2 Google + Email/Password, session JWT lưu Expo SecureStore | Anon Key | N/A |
 | **Supabase Storage** | Backend / Client | Lưu file PDF/ảnh gốc, signed URL | Service Role Key | 1GB free; auto-delete sau 24h |
-| **Supabase Realtime** | Client (Next.js/Capacitor) | Quiz Battle: player list, câu hỏi, leaderboard sync | Anon Key + RLS | 200 concurrent connections free |
+| **Supabase Realtime** | Client (React Native) | Quiz Battle: player list, câu hỏi, leaderboard sync | Anon Key + RLS | 200 concurrent connections free |
 | **Celery + Redis** | Backend (FastAPI) | Async task queue: OCR + Graph pipeline background jobs | Internal | Redis 25MB free (Upstash) |
-| **IndexedDB** | Client (Browser/Capacitor) | Offline cache: graph JSON, chunks, sync queue | Browser API | ~50MB per origin |
+| **Expo SQLite & MMKV** | Client (React Native) | Offline cache: graph JSON, chunks, sync queue | Native SQLite / C++ MMKV | Theo bộ nhớ máy |
 
 ### 🔐 Security & Privacy
 
@@ -696,8 +694,8 @@ PRIMARY KEY (room_id, user_id, question_idx)
 #### Bảo mật API & Dữ liệu
 - **Gemini API Key & Neo4j credentials**: KHÔNG nhúng vào client app – chỉ gọi qua FastAPI backend (server-side)
 - File PDF/ảnh gốc lưu Supabase Storage với signed URL (TTL 1 giờ/link); **tự động xóa file gốc sau 24h** sau khi pipeline hoàn tất
-- Token lưu client: **Capacitor SecureStore** (iOS Keychain / Android Keystore) – mã hóa AES-256
-- IndexedDB content: Chỉ lưu processed chunks và graph JSON (không lưu file nhị phân gốc)
+- Token lưu client: **Expo SecureStore / MMKV** (iOS Keychain / Android Keystore) – mã hóa AES-256
+- Offline Storage: Chỉ lưu processed chunks và graph JSON (không lưu file nhị phân gốc)
 - HTTPS/TLS 1.3 bắt buộc cho mọi API call; WebSocket với wss://
 
 #### Tuân thủ
@@ -757,8 +755,8 @@ PRIMARY KEY (room_id, user_id, question_idx)
 | 4 | **PaddleOCR chất lượng thấp** với ảnh mờ/nghiêng/phức tạp | Cao | Trung bình | Pre-process: deskew + denoise ảnh trước khi OCR; User preview + confirm trước pipeline; Fallback Google ML Kit |
 | 5 | **Gemini JSON output không hợp lệ** (hallucinated schema) | Trung bình | Trung bình | Structured JSON Output mode (Gemini API); JSON schema validation + repair; Retry ≤ 3 lần |
 | 6 | **Supabase Realtime disconnect** trong Quiz Battle | Trung bình | Cao | Auto-reconnect WebSocket; Server-side timer là source of truth; Graceful degradation (disable battle, không crash) |
-| 7 | **IndexedDB quota exceeded** trên thiết bị lưu trữ thấp | Thấp | Trung bình | Eviction policy: xóa graph cũ nhất khi > 80% quota; Cảnh báo user |
-| 8 | **Capacitor Bridge latency** (JS ↔ Native) cho OCR camera | Thấp | Thấp | Dùng ML Kit native plugin trực tiếp; Tránh gọi bridge > 30fps |
+| 7 | **Mobile storage exceeded** trên thiết bị lưu trữ thấp | Thấp | Trung bình | Eviction policy: xóa graph/chunks cũ nhất khi bộ nhớ SQLite vượt ngưỡng; Cảnh báo user |
+| 8 | **React Native Bridge/JSI overhead** khi render graph lớn | Thấp | Thấp | Dùng WebView tách biệt thread UI với canvas Cytoscape.js; tối ưu payload JSON |
 | 9 | **File PDF mã hóa / password-protected** | Cao | Trung bình | Detect trước khi xử lý; Yêu cầu user nhập password hoặc export PDF không khóa |
 
 ---
@@ -785,13 +783,14 @@ Một feature được coi là **Done** khi:
 
 | Tier | Công nghệ | Vai trò |
 |------|-----------|----------|
-| **Web Frontend** | Next.js 15 + React 19 | Dashboard, SSR, SEO |
-| **Mobile Shell** | Capacitor | Android APK + iOS từ Next.js |
-| **On-device AI** | Google ML Kit | OCR Camera offline |
-| **Graph UI** | Cytoscape.js / Vis.js / D3.js | Knowledge Graph visualization |
-| **Offline Cache** | IndexedDB | Sync queue + offline graph/docs |
+| **Mobile App** | React Native (Expo SDK 52) | Ứng dụng di động native iOS & Android |
+| **Navigation** | Expo Router v4 | Tabs, Stack, Deep linking |
+| **Styling** | NativeWind v4 (Tailwind) | Mobile-First UI styling |
+| **On-device AI** | Google ML Kit | OCR Camera offline (@react-native-ml-kit) |
+| **Graph UI** | react-native-webview + Cytoscape | Knowledge Graph visualization |
+| **Offline Cache** | Expo SQLite & MMKV | Sync queue + offline graph/docs |
 | **Backend** | FastAPI (Python 3.11) | Pipeline OCR→Embed→Graph, GraphRAG query |
-| **Auth/Proxy** | Next.js API Routes | Session, phân quyền |
+| **Auth** | Supabase Auth + SecureStore | Session, phân quyền, OAuth2 |
 | **Task Queue** | Celery + Redis | Async background pipeline jobs |
 | **OCR (Cloud)** | PaddleOCR v4/v5 | Tiếng Việt, scan mờ, bảng biểu |
 | **LLM** | Gemini 2.5 Flash | Extraction, RAG answer, Quiz, Summary |
