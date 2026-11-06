@@ -1,7 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { User, Mail, Lock, ShieldCheck } from "lucide-react-native";
+import { ArrowRight, Eye, EyeOff, Info } from "lucide-react-native";
+import AuthHeader from "../../components/auth/AuthHeader";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -9,105 +20,298 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleRegister = () => {
     router.replace("/(tabs)");
   };
 
   return (
-    <ScrollView className="flex-1 bg-slate-900 px-6 pt-12">
-      <Text className="text-2xl font-bold text-white mb-1">Tạo tài khoản mới</Text>
-      <Text className="text-slate-400 text-xs mb-6">
-        Bắt đầu khai thác Đồ thị Tri thức và tham gia các nhóm học tập.
-      </Text>
-
-      {/* Name */}
-      <View className="mb-4">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Họ và tên</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <User size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Nguyễn Văn Minh"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            value={fullName}
-            onChangeText={setFullName}
-          />
-        </View>
-      </View>
-
-      {/* Email */}
-      <View className="mb-4">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Email</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Mail size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="minh.nguyen@example.com"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-      </View>
-
-      {/* Password */}
-      <View className="mb-4">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Mật khẩu</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Lock size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Tối thiểu 8 ký tự, có chữ hoa và số"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
-        </View>
-        <View className="flex-row items-center mt-1.5">
-          <ShieldCheck size={12} color="#10B981" />
-          <Text className="text-emerald-400 text-[10px] ml-1">Độ mạnh mật khẩu: Tốt</Text>
-        </View>
-      </View>
-
-      {/* Confirm Password */}
-      <View className="mb-6">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Xác nhận mật khẩu</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Lock size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="Nhập lại mật khẩu"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            secureTextEntry
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-          />
-        </View>
-      </View>
-
-      <Text className="text-slate-500 text-[11px] mb-6 leading-relaxed">
-        Bằng việc đăng ký, bạn đồng ý với <Text className="text-indigo-400">Điều khoản dịch vụ</Text> và{" "}
-        <Text className="text-indigo-400">Chính sách quyền riêng tư</Text> của DocuGraph AI.
-      </Text>
-
-      <TouchableOpacity
-        className="bg-indigo-600 p-4 rounded-xl items-center mb-6 active:opacity-90"
-        onPress={handleRegister}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text className="text-white font-semibold text-sm">Đăng ký tài khoản</Text>
-      </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.appPanel}>
+            <AuthHeader />
 
-      <View className="flex-row justify-center pb-12">
-        <Text className="text-slate-400 text-xs">Đã có tài khoản? </Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-indigo-400 text-xs font-bold">Đăng nhập</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <View style={styles.registerCard}>
+              <Text style={styles.title}>Tạo tài khoản của bạn</Text>
+              <Text style={styles.subtitle}>
+                Bắt đầu cùng DocuGraph. Chỉ mất một phút.
+              </Text>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Họ và tên</Text>
+                <TextInput
+                  accessibilityLabel="Họ và tên"
+                  placeholder="Nhập họ và tên của bạn"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.input}
+                  autoCapitalize="words"
+                  autoComplete="name"
+                  value={fullName}
+                  onChangeText={setFullName}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  accessibilityLabel="Email"
+                  placeholder="Nhập địa chỉ email của bạn"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Mật khẩu</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    accessibilityLabel="Mật khẩu"
+                    placeholder="Tạo mật khẩu"
+                    placeholderTextColor="#94A3B8"
+                    style={styles.passwordInput}
+                    secureTextEntry={!showPassword}
+                    autoComplete="new-password"
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showPassword ? "Ẩn mật khẩu" : "Hiện mật khẩu"
+                    }
+                    onPress={() => setShowPassword((visible) => !visible)}
+                    hitSlop={10}
+                  >
+                    {showPassword ? (
+                      <Eye size={16} color="#64748B" />
+                    ) : (
+                      <EyeOff size={16} color="#64748B" />
+                    )}
+                  </Pressable>
+                </View>
+                <View style={styles.passwordHint}>
+                  <Info size={12} color="#71819B" />
+                  <Text style={styles.passwordHintText}>
+                    Ít nhất 8 ký tự, có chữ hoa và chữ số.
+                  </Text>
+                </View>
+              </View>
+
+              <View style={[styles.field, styles.confirmField]}>
+                <Text style={styles.label}>Xác nhận mật khẩu</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    accessibilityLabel="Xác nhận mật khẩu"
+                    placeholder="Nhập lại mật khẩu"
+                    placeholderTextColor="#94A3B8"
+                    style={styles.passwordInput}
+                    secureTextEntry={!showConfirmPassword}
+                    autoComplete="new-password"
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      showConfirmPassword
+                        ? "Ẩn mật khẩu xác nhận"
+                        : "Hiện mật khẩu xác nhận"
+                    }
+                    onPress={() =>
+                      setShowConfirmPassword((visible) => !visible)
+                    }
+                    hitSlop={10}
+                  >
+                    {showConfirmPassword ? (
+                      <Eye size={16} color="#64748B" />
+                    ) : (
+                      <EyeOff size={16} color="#64748B" />
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleRegister}
+                style={({ pressed }) => [
+                  styles.registerButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.registerButtonText}>
+                  Đăng ký tài khoản
+                </Text>
+                <ArrowRight size={16} color="#FFFFFF" />
+              </Pressable>
+
+              <Text style={styles.termsText}>
+                Bằng việc đăng ký, bạn đồng ý với{" "}
+                <Text style={styles.termsLink}>Điều khoản sử dụng</Text> và{" "}
+                <Text style={styles.termsLink}>
+                  Chính sách quyền riêng tư
+                </Text>{" "}
+                của DocuGraph.
+              </Text>
+
+              <View style={styles.loginRow}>
+                <Text style={styles.loginText}>Đã có tài khoản? </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => router.replace("/(auth)/login")}
+                >
+                  <Text style={styles.loginLink}>Đăng nhập</Text>
+                </Pressable>
+              </View>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  appPanel: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    padding: 16,
+    borderRadius: 28,
+    backgroundColor: "#F8FAFC",
+  },
+  registerCard: {
+    padding: 16,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+  },
+  title: {
+    color: "#172B4D",
+    fontSize: 22,
+    fontWeight: "700",
+  },
+  subtitle: {
+    marginTop: 7,
+    marginBottom: 14,
+    color: "#71819B",
+    fontSize: 12,
+  },
+  field: {
+    marginBottom: 14,
+  },
+  label: {
+    marginBottom: 7,
+    color: "#172B4D",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  input: {
+    height: 46,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 8,
+    color: "#172B4D",
+    fontSize: 12,
+  },
+  passwordInputWrapper: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    height: "100%",
+    color: "#172B4D",
+    fontSize: 12,
+  },
+  passwordHint: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    marginTop: 7,
+  },
+  passwordHintText: {
+    color: "#71819B",
+    fontSize: 10,
+  },
+  confirmField: {
+    marginBottom: 14,
+  },
+  registerButton: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: "#2443B5",
+  },
+  registerButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  pressed: {
+    opacity: 0.82,
+  },
+  termsText: {
+    marginTop: 12,
+    color: "#71819B",
+    fontSize: 10,
+    lineHeight: 16,
+    textAlign: "center",
+  },
+  termsLink: {
+    color: "#1E40AF",
+  },
+  loginRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 17,
+  },
+  loginText: {
+    color: "#71819B",
+    fontSize: 11,
+  },
+  loginLink: {
+    color: "#1E40AF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+});

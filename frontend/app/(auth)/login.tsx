@@ -1,7 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity, ScrollView } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { Mail, Lock, Eye, EyeOff, Sparkles } from "lucide-react-native";
+import { ArrowRight, Eye, EyeOff } from "lucide-react-native";
+import AuthHeader from "../../components/auth/AuthHeader";
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -9,100 +20,248 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleLogin = () => {
-    // Navigate into main tabs
-    router.replace("/(tabs)");
-  };
+  const handleLogin = () => router.replace("/(tabs)");
 
   return (
-    <ScrollView className="flex-1 bg-slate-900 px-6 pt-16">
-      {/* Brand Header */}
-      <View className="items-center mb-8">
-        <View className="bg-indigo-600/20 p-4 rounded-3xl border border-indigo-500/30 mb-3">
-          <Sparkles size={36} color="#818CF8" />
-        </View>
-        <Text className="text-2xl font-bold text-white">DocuGraph AI</Text>
-        <Text className="text-slate-400 text-xs mt-1 text-center">
-          Nền tảng Trợ lý Tri thức Đa tầng & Đồ thị Học tập Thông minh
-        </Text>
-      </View>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+        <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+          <View style={styles.appPanel}>
+            <AuthHeader />
 
-      <Text className="text-xl font-bold text-white mb-6">Đăng nhập tài khoản</Text>
+            {/* Login Card */}
+            <View style={styles.loginCard}>
+              <Text style={styles.title}>Chào mừng trở lại!</Text>
+              <Text style={styles.subtitle}>Đăng nhập để tiếp tục học tập cùng DocuGraph.</Text>
 
-      {/* Google OAuth Button */}
-      <TouchableOpacity
-        className="bg-slate-800 border border-slate-700 p-3.5 rounded-xl flex-row items-center justify-center mb-5 active:bg-slate-750"
-        onPress={handleLogin}
-      >
-        <Text className="text-slate-200 font-semibold text-sm">Đăng nhập với Google</Text>
-      </TouchableOpacity>
+              {/* Nút Google */}
+              <Pressable
+                onPress={handleLogin}
+                style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.googleIcon}>G</Text>
+                <Text style={styles.googleButtonText}>Đăng nhập với Google</Text>
+              </Pressable>
 
-      <View className="flex-row items-center mb-5">
-        <View className="flex-1 h-[1px] bg-slate-800" />
-        <Text className="text-slate-500 text-xs mx-3">Hoặc email và mật khẩu</Text>
-        <View className="flex-1 h-[1px] bg-slate-800" />
-      </View>
+              <View style={styles.divider}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>hoặc bằng email</Text>
+                <View style={styles.dividerLine} />
+              </View>
 
-      {/* Email Input */}
-      <View className="mb-4">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Email sinh viên</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Mail size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="minh.nguyen@student.edu.vn"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-      </View>
+              {/* Input Email */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  placeholder="name@student.edu.vn"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
 
-      {/* Password Input */}
-      <View className="mb-2">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Mật khẩu</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Lock size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="••••••••"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-          />
-          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-            {showPassword ? <EyeOff size={18} color="#94A3B8" /> : <Eye size={18} color="#94A3B8" />}
-          </TouchableOpacity>
-        </View>
-      </View>
+              {/* Input Password */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Mật khẩu</Text>
+                <View style={styles.passwordInputWrapper}>
+                  <TextInput
+                    placeholder="••••••••"
+                    placeholderTextColor="#94A3B8"
+                    style={styles.passwordInput}
+                    secureTextEntry={!showPassword}
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                  <Pressable onPress={() => setShowPassword(!showPassword)} hitSlop={10}>
+                    {showPassword ? <Eye size={17} color="#1E40AF" /> : <EyeOff size={17} color="#1E40AF" />}
+                  </Pressable>
+                </View>
+              </View>
 
-      {/* Forgot Password Link */}
-      <TouchableOpacity
-        className="self-end mb-6"
-        onPress={() => router.push("/(auth)/forgot-password")}
-      >
-        <Text className="text-indigo-400 text-xs font-medium">Quên mật khẩu?</Text>
-      </TouchableOpacity>
+              {/* Quên mật khẩu */}
+              <Pressable onPress={() => router.push("/(auth)/forgot-password")} style={styles.forgotButton}>
+                <Text style={styles.linkText}>Quên mật khẩu?</Text>
+              </Pressable>
 
-      {/* Login Submit Button */}
-      <TouchableOpacity
-        className="bg-indigo-600 p-4 rounded-xl items-center mb-6 active:opacity-90"
-        onPress={handleLogin}
-      >
-        <Text className="text-white font-semibold text-sm">Đăng nhập</Text>
-      </TouchableOpacity>
+              {/* Nút Đăng nhập */}
+              <Pressable
+                onPress={handleLogin}
+                style={({ pressed }) => [styles.loginButton, pressed && styles.pressed]}
+              >
+                <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                <ArrowRight size={16} color="#FFFFFF" />
+              </Pressable>
 
-      {/* Register Link */}
-      <View className="flex-row justify-center pb-12">
-        <Text className="text-slate-400 text-xs">Chưa có tài khoản? </Text>
-        <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
-          <Text className="text-indigo-400 text-xs font-bold">Đăng ký ngay</Text>
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+              {/* Chuyển sang Đăng ký */}
+              <View style={styles.registerRow}>
+                <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+                <Pressable onPress={() => router.push("/(auth)/register")}>
+                  <Text style={styles.linkText}>Đăng ký ngay</Text>
+                </Pressable>
+              </View>
+            </View>
+
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: "flex-start",
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  appPanel: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    padding: 16,
+    borderRadius: 28,
+    backgroundColor: "#F8FAFC",
+  },
+
+  /* Thẻ đăng nhập */
+  loginCard: {
+    padding: 16,
+    borderRadius: 19,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    backgroundColor: "#FFFFFF",
+  },
+  title: {
+    color: "#0F172A",
+    fontSize: 21,
+    fontWeight: "700",
+  },
+  subtitle: {
+    marginTop: 7,
+    marginBottom: 18,
+    color: "#71819B",
+    fontSize: 12,
+  },
+
+  /* Nút Google */
+  googleButton: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 10,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 9,
+    backgroundColor: "#FFFFFF",
+  },
+  googleIcon: {
+    color: "#1E40AF",
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  googleButtonText: {
+    color: "#334155",
+    fontSize: 12,
+    fontWeight: "600",
+  },
+
+  /* Đường gạch ngang chia cách */
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: "#E7ECF3",
+  },
+  dividerText: {
+    color: "#94A3B8",
+    fontSize: 11,
+  },
+
+  /* Các ô nhập liệu (Inputs) */
+  field: {
+    marginBottom: 14,
+  },
+  label: {
+    marginBottom: 7,
+    color: "#172B4D",
+    fontSize: 12,
+    fontWeight: "500",
+  },
+  input: {
+    height: 46,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 8,
+    color: "#172B4D",
+    fontSize: 12,
+  },
+  passwordInputWrapper: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 8,
+  },
+  passwordInput: {
+    flex: 1,
+    height: "100%",
+    color: "#172B4D",
+    fontSize: 12,
+  },
+
+  /* Nút hành động & Điều hướng */
+  forgotButton: {
+    alignSelf: "flex-end",
+    marginBottom: 20,
+  },
+  linkText: {
+    color: "#1E40AF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  loginButton: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: "#2443B5",
+  },
+  loginButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  pressed: {
+    opacity: 0.82,
+  },
+  registerRow: {
+    flexDirection: "row",
+    justifyContent: "center",
+    marginTop: 20,
+  },
+  registerText: {
+    color: "#64748B",
+    fontSize: 11,
+  },
+});
