@@ -1,7 +1,18 @@
 import React, { useState } from "react";
-import { View, Text, TextInput, TouchableOpacity } from "react-native";
+import {
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
 import { useRouter } from "expo-router";
-import { Mail, ArrowLeft } from "lucide-react-native";
+import { ArrowLeft, ArrowRight, Info, Mail } from "lucide-react-native";
+import AuthHeader from "../../components/auth/AuthHeader";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -12,43 +23,190 @@ export default function ForgotPasswordScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-900 px-6 pt-12">
-      <TouchableOpacity onPress={() => router.back()} className="mb-6">
-        <ArrowLeft size={24} color="#94A3B8" />
-      </TouchableOpacity>
-
-      <Text className="text-2xl font-bold text-white mb-2">Quên mật khẩu?</Text>
-      <Text className="text-slate-400 text-xs mb-8 leading-relaxed">
-        Nhập địa chỉ email đã đăng ký. Hệ thống sẽ gửi mã xác thực OTP 6 chữ số để bạn đặt lại mật khẩu.
-      </Text>
-
-      <View className="mb-6">
-        <Text className="text-slate-300 text-xs font-medium mb-1.5">Email tài khoản</Text>
-        <View className="flex-row items-center bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2.5">
-          <Mail size={18} color="#94A3B8" />
-          <TextInput
-            placeholder="minh.nguyen@student.edu.vn"
-            placeholderTextColor="#64748B"
-            className="flex-1 text-slate-100 text-sm ml-2.5"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={email}
-            onChangeText={setEmail}
-          />
-        </View>
-      </View>
-
-      <TouchableOpacity
-        className="bg-indigo-600 p-4 rounded-xl items-center mb-6 active:opacity-90"
-        onPress={handleRequestOTP}
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.keyboardView}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
-        <Text className="text-white font-semibold text-sm">Gửi mã xác thực</Text>
-      </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.appPanel}>
+            <AuthHeader />
 
-      <Text className="text-slate-500 text-xs text-center">
-        Hãy nhớ kiểm tra cả hộp thư chính và thư mục spam/rác.
-      </Text>
-    </View>
+            <View style={styles.card}>
+              <View style={styles.iconBox}>
+                <Mail size={18} color="#2354C7" />
+              </View>
+              <Text style={styles.title}>Quên mật khẩu?</Text>
+              <Text style={styles.description}>
+                Đừng lo, hãy nhập email đã đăng ký. Chúng tôi sẽ gửi mã xác
+                thực để bạn đặt lại mật khẩu.
+              </Text>
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  accessibilityLabel="Email"
+                  placeholder="Nhập email đã đăng ký"
+                  placeholderTextColor="#94A3B8"
+                  style={styles.input}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoComplete="email"
+                  value={email}
+                  onChangeText={setEmail}
+                />
+              </View>
+
+              <View style={styles.infoBox}>
+                <Info size={14} color="#2354C7" />
+                <Text style={styles.infoText}>
+                  Mã xác thực gồm 6 chữ số. Vui lòng kiểm tra cả thư mục rác
+                  nếu chưa nhận được email.
+                </Text>
+              </View>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={handleRequestOTP}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <Text style={styles.primaryButtonText}>Gửi mã xác thực</Text>
+                <ArrowRight size={14} color="#FFFFFF" />
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => router.replace("/(auth)/login")}
+                style={styles.backButton}
+              >
+                <ArrowLeft size={14} color="#1E40AF" />
+                <Text style={styles.backText}>Quay lại đăng nhập</Text>
+              </Pressable>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#F3F4F6",
+  },
+  keyboardView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 24,
+  },
+  appPanel: {
+    flex: 1,
+    width: "100%",
+    maxWidth: 420,
+    alignSelf: "center",
+    padding: 16,
+    borderRadius: 28,
+    backgroundColor: "#F8FAFC",
+  },
+  card: {
+    padding: 14,
+    borderWidth: 1,
+    borderColor: "#E5EAF2",
+    borderRadius: 19,
+    backgroundColor: "#FFFFFF",
+  },
+  iconBox: {
+    width: 42,
+    height: 42,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 10,
+    borderRadius: 11,
+    backgroundColor: "#EDF4FF",
+  },
+  title: {
+    color: "#152B4A",
+    fontSize: 32,
+    fontWeight: "700",
+  },
+  description: {
+    marginTop: 8,
+    marginBottom: 18,
+    color: "#71819B",
+    fontSize: 16,
+    lineHeight: 19,
+  },
+  field: {
+    marginBottom: 19,
+  },
+  label: {
+    marginBottom: 6,
+    color: "#152B4A",
+    fontSize: 14,
+    fontWeight: "500",
+  },
+  input: {
+    height: 46,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: "#DCE4F0",
+    borderRadius: 8,
+    color: "#172B4D",
+    fontSize: 12,
+  },
+  infoBox: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    gap: 10,
+    marginBottom: 19,
+    padding: 13,
+    borderRadius: 9,
+    backgroundColor: "#F3F7FC",
+  },
+  infoText: {
+    flex: 1,
+    color: "#71819B",
+    fontSize: 11,
+    lineHeight: 17,
+  },
+  primaryButton: {
+    height: 46,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    borderRadius: 8,
+    backgroundColor: "#2443B5",
+  },
+  primaryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 11,
+    fontWeight: "600",
+  },
+  pressed: {
+    opacity: 0.82,
+  },
+  backButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 7,
+    marginTop: 19,
+  },
+  backText: {
+    color: "#1E40AF",
+    fontSize: 11,
+    fontWeight: "500",
+  },
+});

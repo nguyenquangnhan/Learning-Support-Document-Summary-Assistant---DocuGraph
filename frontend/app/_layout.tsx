@@ -20,10 +20,7 @@ export default function RootLayout() {
           }}
         >
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="(auth)/login" options={{ title: "Đăng nhập", headerShown: false }} />
-          <Stack.Screen name="(auth)/register" options={{ title: "Đăng ký", headerShown: false }} />
-          <Stack.Screen name="(auth)/forgot-password" options={{ title: "Quên mật khẩu" }} />
-          <Stack.Screen name="(auth)/verify-otp" options={{ title: "Xác thực OTP" }} />
+          <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="document/[id]" options={{ title: "Tài liệu & Tóm tắt" }} />
           <Stack.Screen name="battle/[roomCode]" options={{ title: "Đấu trí Quiz Battle" }} />
         </Stack>
@@ -31,4 +28,3 @@ export default function RootLayout() {
     </SafeAreaProvider>
   );
 }
-
