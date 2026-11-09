@@ -20,8 +20,8 @@ class Settings(BaseSettings):
     NEO4J_USERNAME: str = "neo4j"
     NEO4J_PASSWORD: str = "password"
 
-    # PostgreSQL
-    POSTGRES_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/docugraph"
+    # Database (PostgreSQL or local SQLite for development)
+    POSTGRES_URL: str = "sqlite+aiosqlite:///./docugraph.db"
 
     # Supabase
     SUPABASE_URL: str = "https://your-project.supabase.co"
@@ -30,6 +30,7 @@ class Settings(BaseSettings):
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
+    
 
     # Storage
     SUPABASE_STORAGE_BUCKET: str = "docugraph-files"

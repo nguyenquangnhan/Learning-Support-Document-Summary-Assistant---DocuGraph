@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import * as DocumentPicker from 'expo-document-picker';
 import { X, UploadCloud, CheckCircle2, Lock } from 'lucide-react-native';
@@ -12,12 +12,13 @@ export default function NewDocumentScreen() {
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [summaryType, setSummaryType] = useState<SummaryType>('detailed');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processStep, setProcessStep] = useState<string>('Đang tải lên...');
 
   // Hàm chọn file từ bộ nhớ máy
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
         copyToCacheDirectory: true,
       });
 
@@ -37,19 +38,39 @@ export default function NewDocumentScreen() {
     }
 
     setIsProcessing(true);
+    setProcessStep('Đang trích xuất nội dung văn bản...');
     try {
-      // Giả lập/gọi API xử lý bóc tách tài liệu
-      // const formData = new FormData();
-      // formData.append('file', { uri: selectedFile.uri, name: selectedFile.name, type: selectedFile.mimeType } as any);
-      // const res = await api.post('/documents/upload', formData);
+      const formData = new FormData();
+      if (Platform.OS === 'web' && (selectedFile as any).file) {
+        formData.append('file', (selectedFile as any).file);
+      } else if (Platform.OS === 'web') {
+        const resp = await fetch(selectedFile.uri);
+        const blob = await resp.blob();
+        formData.append('file', blob, selectedFile.name);
+      } else {
+        formData.append('file', {
+          uri: selectedFile.uri,
+          name: selectedFile.name,
+          type: selectedFile.mimeType || 'application/pdf',
+        } as any);
+      }
+      formData.append('title', selectedFile.name);
+      formData.append('summary_type', summaryType);
 
-      setTimeout(() => {
-        setIsProcessing(false);
-        router.push('/document/doc-123'); // Chuyển sang màn hình xem tóm tắt [id].tsx
-      }, 1500);
-    } catch (err) {
+      setProcessStep('Gemini đang phân tích luận điểm & tạo đồ thị tri thức...');
+      const res = await api.post('/documents/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
       setIsProcessing(false);
-      Alert.alert('Lỗi', 'Có lỗi xảy ra khi tải lên tài liệu');
+      const documentId = res.data.document_id;
+      router.replace(`/document/${documentId}`);
+    } catch (err: any) {
+      setIsProcessing(false);
+      const errorMsg = err?.response?.data?.detail || err?.message || 'Có lỗi xảy ra khi tải lên tài liệu';
+      Alert.alert('Lỗi xử lý', errorMsg);
     }
   };
 
@@ -133,7 +154,7 @@ export default function NewDocumentScreen() {
           {isProcessing && (
             <View className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-4">
               <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs font-bold text-indigo-700">Đang phân tích tri thức (75%)...</Text>
+                <Text className="text-xs font-bold text-indigo-700 flex-1 mr-2">{processStep}</Text>
                 <ActivityIndicator size="small" color="#4F46E5" />
               </View>
 

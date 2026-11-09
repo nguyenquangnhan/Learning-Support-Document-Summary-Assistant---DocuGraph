@@ -2,11 +2,24 @@
 DocuGraph AI – FastAPI Application Entry Point
 GraphRAG powered by Gemini 2.5 Flash + Neo4j + pgvector + Supabase
 """
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import settings
+from app.db.database import engine, Base
+import app.models  # register all models on Base.metadata
 
 from app.api.routes import documents, chat, graph, quiz, groups, battle
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Create tables automatically if they do not exist
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await engine.dispose()
+
 
 app = FastAPI(
     title="DocuGraph AI API",
@@ -14,6 +27,7 @@ app = FastAPI(
     version="2.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
+    lifespan=lifespan,
 )
 
 # CORS – supports local web dev, mobile simulators, and physical devices

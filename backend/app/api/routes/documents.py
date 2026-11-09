@@ -8,7 +8,7 @@ from sqlalchemy import select
 from app.db.database import get_db
 from app.models.document import Document
 from app.schemas.document import DocumentResponse, DocumentUploadResponse
-from app.services.document_service import process_document_sync
+from app.services.document_service import process_document_sync, extract_text_from_file
 
 router = APIRouter()
 
@@ -34,33 +34,32 @@ async def get_document(document_id: str, db: AsyncSession = Depends(get_db)):
 async def upload_document(
     file: UploadFile = File(...),
     title: str = Form(None),
+    summary_type: str = Form("detailed"),
     db: AsyncSession = Depends(get_db)
 ):
     """
-    Upload a document (PDF, TXT, or Image) and process synchronously/asynchronously.
+    Upload a document (PDF, DOCX, TXT) and process through GraphRAG pipeline.
     """
-    doc_title = title or file.filename or "Untitled Document"
+    filename = file.filename or "Tai_lieu.pdf"
+    doc_title = title or filename
     content = await file.read()
-    file_type = file.filename.split(".")[-1].lower() if file.filename else "pdf"
+    file_type = filename.split(".")[-1].lower() if "." in filename else "pdf"
 
-    # Extract text (mock extraction for text or raw decode)
-    try:
-        raw_text = content.decode("utf-8")
-    except Exception:
-        raw_text = f"Nội dung số hóa từ tệp {doc_title}. Tài liệu chứa các khái niệm toán học, định lý và ứng dụng thực tiễn."
+    # Real text extraction from PDF/DOCX/TXT
+    raw_text, num_pages = extract_text_from_file(content, filename)
 
     doc = Document(
         title=doc_title,
         file_type=file_type,
         file_size=len(content),
-        num_pages=max(1, len(raw_text) // 1000),
+        num_pages=num_pages,
         status="processing"
     )
     db.add(doc)
     await db.commit()
     await db.refresh(doc)
 
-    # Process pipeline
+    # Process pipeline (Chunking -> Embedding -> Summary -> Graph Extraction)
     await process_document_sync(db, doc, raw_text)
 
     return DocumentUploadResponse(

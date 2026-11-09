@@ -3,6 +3,7 @@ backend/.env
 backend/__pycache__/
 backend/**/__pycache__/
 backend/*.pyc
+backend/*.db
 backend/.venv/
 backend/venv/
 backend/*.egg-info/

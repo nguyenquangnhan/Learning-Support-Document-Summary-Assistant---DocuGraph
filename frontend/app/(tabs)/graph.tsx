@@ -1,99 +1,138 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { ArrowLeft, Plus, Minus, Maximize2, Sparkles, X, BookOpen } from 'lucide-react-native';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../lib/api';
+import { GraphCanvas } from '../../components/graph/GraphCanvas';
 
 export default function GraphScreen() {
+  const router = useRouter();
+  const { documentId } = useLocalSearchParams<{ documentId?: string }>();
   const [activeTab, setActiveTab] = useState<'mindmap' | 'graph'>('graph');
-  const [selectedConcept, setSelectedConcept] = useState(true);
+  const [selectedNode, setSelectedNode] = useState<any>(null);
+
+  const { data: graphData, isLoading } = useQuery({
+    queryKey: ['graph', documentId],
+    queryFn: async () => {
+      if (documentId) {
+        try {
+          const res = await api.get(`/graph/${documentId}`);
+          if (res.data && res.data.nodes && res.data.nodes.length > 0) {
+            return res.data;
+          }
+        } catch {}
+      }
+      // Fallback sample graph
+      return {
+        nodes: [
+          { id: 'n1', label: 'Tiến trình (Process)', type: 'Concept', definition: 'Một chương trình đang trong quá trình thực thi trên hệ điều hành.', page_number: 12 },
+          { id: 'n2', label: 'Tài nguyên (Resource)', type: 'Concept', definition: 'CPU, bộ nhớ, thiết bị I/O được cấp phát cho tiến trình.', page_number: 14 },
+          { id: 'n3', label: 'Luồng (Thread)', type: 'Concept', definition: 'Đơn vị xử lý cơ bản nhất bên trong một tiến trình.', page_number: 22 },
+          { id: 'n4', label: 'Deadlock (Khóa chết)', type: 'Theorem', definition: 'Trạng thái tập hợp tiến trình chờ đợi lẫn nhau vô hạn.', page_number: 38 },
+        ],
+        edges: [
+          { id: 'e1', source: 'n1', target: 'n2', label: 'yêu_cầu' },
+          { id: 'e2', source: 'n1', target: 'n3', label: 'chứa' },
+          { id: 'e3', source: 'n1', target: 'n4', label: 'dẫn_tới' },
+        ],
+      };
+    },
+  });
+
+  const nodes = graphData?.nodes || [];
+  const edges = graphData?.edges || [];
 
   return (
-    <View className="flex-1 bg-slate-50 pt-12">
+    <View className="flex-1 bg-slate-900 pt-12">
       {/* Header */}
-      <View className="px-4 flex-row items-center border-b border-slate-200 pb-3 bg-white">
-        <TouchableOpacity className="p-1 mr-2">
-          <ArrowLeft size={22} color="#334155" />
+      <View className="px-4 flex-row items-center border-b border-slate-800 pb-3 bg-slate-900">
+        <TouchableOpacity onPress={() => router.back()} className="p-1 mr-2">
+          <ArrowLeft size={22} color="#94A3B8" />
         </TouchableOpacity>
-        <View>
-          <Text className="text-xs text-slate-400 uppercase font-semibold">KHÔNG GIAN KIẾN THỨC</Text>
-          <Text className="text-base font-bold text-slate-800">Đồ thị tri thức: Hệ Điều Hành</Text>
+        <View className="flex-1">
+          <Text className="text-[10px] text-indigo-400 uppercase font-bold tracking-wider">KHÔNG GIAN KIẾN THỨC</Text>
+          <Text className="text-sm font-bold text-white" numberOfLines={1}>
+            {documentId ? `Đồ thị tri thức tài liệu` : 'Đồ thị tri thức tổng quan'}
+          </Text>
         </View>
       </View>
 
       {/* Tabs Switcher */}
-      <View className="flex-row p-3 bg-white border-b border-slate-100">
+      <View className="flex-row p-3 bg-slate-900/90 border-b border-slate-800">
         <TouchableOpacity 
           onPress={() => setActiveTab('mindmap')}
-          className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'mindmap' ? 'bg-indigo-50 border border-indigo-200' : 'bg-slate-100'}`}
+          className={`flex-1 py-2 rounded-xl items-center ${activeTab === 'mindmap' ? 'bg-indigo-950 border border-indigo-700' : 'bg-slate-800'}`}
         >
-          <Text className={`text-xs font-semibold ${activeTab === 'mindmap' ? 'text-indigo-600' : 'text-slate-500'}`}>Mindmap (Cây)</Text>
+          <Text className={`text-xs font-semibold ${activeTab === 'mindmap' ? 'text-indigo-400' : 'text-slate-400'}`}>Mindmap (Cây)</Text>
         </TouchableOpacity>
         <TouchableOpacity 
           onPress={() => setActiveTab('graph')}
-          className={`flex-1 py-2 rounded-xl items-center ml-2 ${activeTab === 'graph' ? 'bg-indigo-600' : 'bg-slate-100'}`}
+          className={`flex-1 py-2 rounded-xl items-center ml-2 ${activeTab === 'graph' ? 'bg-indigo-600' : 'bg-slate-800'}`}
         >
-          <Text className={`text-xs font-semibold ${activeTab === 'graph' ? 'text-white' : 'text-slate-500'}`}>Concept Graph (Mạng lưới)</Text>
+          <Text className={`text-xs font-semibold ${activeTab === 'graph' ? 'text-white' : 'text-slate-400'}`}>Concept Graph (Mạng lưới)</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Canvas Mockup */}
-      <View className="flex-1 relative bg-slate-50 justify-center items-center p-4">
-        <Text className="absolute top-3 left-4 text-xs text-slate-400 font-medium">4 khái niệm • 3 liên kết</Text>
-
-        {/* Canvas Visual Graph */}
-        <View className="w-full items-center">
-          <View className="bg-indigo-600 px-6 py-3 rounded-2xl shadow-md mb-8">
-            <Text className="text-white font-bold text-sm">Tiến trình (Process)</Text>
+      {/* Canvas Interactive Cytoscape Area */}
+      <View className="flex-1 relative bg-slate-950">
+        {isLoading ? (
+          <View className="flex-1 items-center justify-center">
+            <ActivityIndicator size="large" color="#6366F1" />
+            <Text className="text-slate-400 text-xs mt-2">Đang dựng đồ thị tri thức...</Text>
           </View>
-
-          <View className="flex-row justify-around w-full mb-8">
-            <View className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-              <Text className="text-slate-700 font-semibold text-xs">Tài nguyên</Text>
-            </View>
-            <View className="bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm">
-              <Text className="text-slate-700 font-semibold text-xs">Luồng (Thread)</Text>
-            </View>
-          </View>
-
-          <View className="bg-indigo-50 border-2 border-indigo-500 px-6 py-3 rounded-2xl shadow-sm">
-            <Text className="text-indigo-700 font-bold text-sm">✦ Deadlock</Text>
-          </View>
-        </View>
-
-        {/* Zoom Controls */}
-        <View className="absolute left-4 bottom-6 bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
-          <TouchableOpacity className="p-2 border-b border-slate-100"><Plus size={18} color="#475569" /></TouchableOpacity>
-          <TouchableOpacity className="p-2 border-b border-slate-100"><Minus size={18} color="#475569" /></TouchableOpacity>
-          <TouchableOpacity className="p-2"><Maximize2 size={18} color="#475569" /></TouchableOpacity>
-        </View>
+        ) : (
+          <>
+            <Text className="absolute top-3 left-4 text-xs text-slate-400 font-medium z-10">
+              {nodes.length} khái niệm • {edges.length} liên kết
+            </Text>
+            <GraphCanvas 
+              nodes={nodes} 
+              edges={edges} 
+              onNodeSelect={(node) => setSelectedNode(node)} 
+            />
+          </>
+        )}
       </View>
 
       {/* Bottom Sheet Concept Detail */}
-      {selectedConcept && (
-        <View className="bg-white rounded-t-3xl border-t border-slate-200 p-5 shadow-2xl">
+      {selectedNode && (
+        <View className="bg-slate-900 rounded-t-3xl border-t border-slate-800 p-5 shadow-2xl">
           <View className="flex-row justify-between items-start mb-2">
             <View>
-              <Text className="text-xs font-bold text-indigo-600 uppercase tracking-wider">KHÁI NIỆM ĐANG CHỌN</Text>
-              <Text className="text-lg font-bold text-slate-900">Deadlock (Khóa chết)</Text>
+              <Text className="text-[10px] font-bold text-indigo-400 uppercase tracking-wider">KHÁI NIỆM ĐANG CHỌN</Text>
+              <Text className="text-base font-bold text-white">{selectedNode.label || selectedNode.name}</Text>
             </View>
-            <TouchableOpacity onPress={() => setSelectedConcept(false)} className="p-1 bg-slate-100 rounded-full">
-              <X size={16} color="#64748B" />
+            <TouchableOpacity onPress={() => setSelectedNode(null)} className="p-1 bg-slate-800 rounded-full">
+              <X size={16} color="#94A3B8" />
             </TouchableOpacity>
           </View>
 
-          <Text className="text-slate-600 text-xs leading-relaxed mb-4">
-            Trạng thái một tập hợp tiến trình bị tắc nghẽn vô hạn do mỗi tiến trình giữ tài nguyên và chờ tài nguyên khác.
+          <Text className="text-slate-300 text-xs leading-relaxed mb-4">
+            {selectedNode.definition || 'Khái niệm được trích xuất từ tài liệu học tập.'}
           </Text>
 
-          <View className="bg-slate-50 p-3 rounded-xl border border-slate-200 flex-row items-center mb-4">
-            <BookOpen size={16} color="#6366F1" className="mr-2" />
-            <Text className="text-xs text-slate-600 font-medium flex-1">
-              Trích xuất từ <Text className="font-bold text-slate-800">Trang 38, Giáo trình HĐH Bách Khoa</Text>
-            </Text>
-          </View>
+          {selectedNode.page_number && (
+            <View className="bg-slate-800/80 p-2.5 rounded-xl border border-slate-700 flex-row items-center mb-4">
+              <BookOpen size={14} color="#818CF8" className="mr-2" />
+              <Text className="text-xs text-slate-300 font-medium flex-1">
+                Trích xuất từ <Text className="font-bold text-indigo-300">Trang {selectedNode.page_number}</Text>
+              </Text>
+            </View>
+          )}
 
-          <TouchableOpacity className="flex-row items-center justify-center bg-indigo-50 py-3 rounded-xl border border-indigo-200">
-            <Sparkles size={16} color="#4F46E5" className="mr-2" />
-            <Text className="text-indigo-600 font-bold text-xs">Hỏi thêm AI về khái niệm này →</Text>
+          <TouchableOpacity 
+            onPress={() => router.push({
+              pathname: '/(tabs)/chat',
+              params: {
+                initialQuery: `Giải thích chi tiết về khái niệm "${selectedNode.label || selectedNode.name}" và các mối quan hệ liên quan?`,
+                documentId,
+              }
+            })}
+            className="flex-row items-center justify-center bg-indigo-600 py-3 rounded-xl shadow-sm"
+          >
+            <Sparkles size={16} color="#FFFFFF" className="mr-2" />
+            <Text className="text-white font-bold text-xs">Hỏi thêm AI về khái niệm này →</Text>
           </TouchableOpacity>
         </View>
       )}

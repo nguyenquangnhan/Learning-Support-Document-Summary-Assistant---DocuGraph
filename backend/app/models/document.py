@@ -1,9 +1,25 @@
 import uuid
 from datetime import datetime
-from sqlalchemy import String, Integer, Text, DateTime, ForeignKey
+from sqlalchemy import String, Integer, Text, DateTime, ForeignKey, TypeDecorator, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from pgvector.sqlalchemy import Vector
 from app.db.database import Base
+
+try:
+    from pgvector.sqlalchemy import Vector
+    HAS_PGVECTOR = True
+except ImportError:
+    HAS_PGVECTOR = False
+
+
+class VectorType(TypeDecorator):
+    """Adaptive vector type: native pgvector Vector(768) on PostgreSQL, JSON on SQLite."""
+    impl = JSON
+    cache_ok = True
+
+    def load_dialect_impl(self, dialect):
+        if dialect.name == "postgresql" and HAS_PGVECTOR:
+            return dialect.type_descriptor(Vector(768))
+        return dialect.type_descriptor(JSON())
 
 
 class Document(Base):
@@ -36,7 +52,7 @@ class DocumentChunk(Base):
     chunk_index: Mapped[int] = mapped_column(Integer, nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     page_number: Mapped[int] = mapped_column(Integer, default=1)
-    embedding = mapped_column(Vector(768), nullable=True)
+    embedding = mapped_column(VectorType, nullable=True)
     token_count: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
