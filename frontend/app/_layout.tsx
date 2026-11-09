@@ -1,12 +1,18 @@
+import { useEffect } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { useAuthStore } from "../stores/authStore";
 import "../global.css";
 
 const queryClient = new QueryClient();
 
 export default function RootLayout() {
+  useEffect(() => {
+    useAuthStore.getState().initializeAuth();
+  }, []);
+
   return (
     <SafeAreaProvider>
       <QueryClientProvider client={queryClient}>

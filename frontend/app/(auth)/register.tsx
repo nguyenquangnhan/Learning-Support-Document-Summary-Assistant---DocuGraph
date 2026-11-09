@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +15,7 @@ import {
 import { useRouter } from "expo-router";
 import { ArrowRight, Eye, EyeOff, Info } from "lucide-react-native";
 import AuthHeader from "../../components/auth/AuthHeader";
+import { supabase } from "../../lib/supabase";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -22,9 +25,55 @@ export default function RegisterScreen() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleRegister = () => {
-    router.replace("/(tabs)");
+  const handleRegister = async () => {
+    if (!fullName.trim() || !email.trim() || !password) {
+      setErrorMessage("Vui lòng điền đầy đủ các trường thông tin.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage("Mật khẩu xác nhận không khớp.");
+      return;
+    }
+    if (password.length < 6) {
+      setErrorMessage("Mật khẩu phải có tối thiểu 6 ký tự.");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            full_name: fullName.trim(),
+          },
+        },
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        router.replace("/(tabs)");
+      } else {
+        Alert.alert(
+          "Đăng ký thành công!",
+          "Vui lòng kiểm tra hộp thư email của bạn để xác thực tài khoản.",
+          [{ text: "Đăng nhập ngay", onPress: () => router.push("/(auth)/login") }]
+        );
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Đăng ký thất bại.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -145,18 +194,33 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
+              {/* Thông báo lỗi */}
+              {errorMessage ? (
+                <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" }}>
+                  <Text style={{ color: "#DC2626", fontSize: 12, fontWeight: "500" }}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
               <Pressable
                 accessibilityRole="button"
                 onPress={handleRegister}
+                disabled={isLoading}
                 style={({ pressed }) => [
                   styles.registerButton,
-                  pressed && styles.pressed,
+                  (pressed || isLoading) && styles.pressed,
+                  isLoading && { opacity: 0.7 },
                 ]}
               >
-                <Text style={styles.registerButtonText}>
-                  Đăng ký tài khoản
-                </Text>
-                <ArrowRight size={16} color="#FFFFFF" />
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.registerButtonText}>
+                      Đăng ký tài khoản
+                    </Text>
+                    <ArrowRight size={16} color="#FFFFFF" />
+                  </>
+                )}
               </Pressable>
 
               <Text style={styles.termsText}>

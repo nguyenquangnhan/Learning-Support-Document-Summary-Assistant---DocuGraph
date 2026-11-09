@@ -1,4 +1,5 @@
 import axios from "axios";
+import { useAuthStore } from "../stores/authStore";
 
 // Default to backend port 8000 (configurable via EXPO_PUBLIC_API_URL)
 const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8000"; // 10.0.2.2 for Android emulator, localhost for iOS simulator
@@ -8,5 +9,13 @@ export const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
+});
+
+api.interceptors.request.use((config) => {
+  const token = useAuthStore.getState().sessionToken;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
 });
 

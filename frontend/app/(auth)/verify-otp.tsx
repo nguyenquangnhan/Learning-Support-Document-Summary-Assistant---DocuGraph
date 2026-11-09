@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +15,7 @@ import {
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, Check, Eye, EyeOff, KeyRound } from "lucide-react-native";
 import AuthHeader from "../../components/auth/AuthHeader";
+import { supabase } from "../../lib/supabase";
 
 export default function VerifyOTPScreen() {
   const router = useRouter();
@@ -24,6 +27,8 @@ export default function VerifyOTPScreen() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [countdown, setCountdown] = useState(45);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     if (countdown === 0) return;
@@ -31,11 +36,56 @@ export default function VerifyOTPScreen() {
     return () => clearTimeout(timer);
   }, [countdown]);
 
-  const handleResetPassword = () => {
-    router.replace("/(auth)/login");
+  const handleResetPassword = async () => {
+    const token = otp.join("");
+    if (token.length < 6) {
+      setErrorMessage("Vui lòng nhập đầy đủ 6 số mã xác thực.");
+      return;
+    }
+    if (!newPassword || newPassword !== confirmPassword) {
+      setErrorMessage("Mật khẩu mới và xác nhận mật khẩu không khớp.");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      if (email) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: "recovery",
+        });
+        if (verifyError) {
+          setErrorMessage(verifyError.message);
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        setErrorMessage(updateError.message);
+        setIsLoading(false);
+        return;
+      }
+
+      Alert.alert("Thành công", "Mật khẩu đã được cập nhật thành công!", [
+        { text: "Đăng nhập", onPress: () => router.replace("/(auth)/login") },
+      ]);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Đặt lại mật khẩu thất bại.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleResendCode = () => {
+  const handleResendCode = async () => {
+    if (email) {
+      await supabase.auth.resetPasswordForEmail(email);
+    }
     setOtp(["", "", "", "", "", ""]);
     setCountdown(45);
   };
@@ -188,18 +238,33 @@ export default function VerifyOTPScreen() {
                 </View>
               </View>
 
+              {/* Thông báo lỗi */}
+              {errorMessage ? (
+                <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" }}>
+                  <Text style={{ color: "#DC2626", fontSize: 12, fontWeight: "500" }}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
               <Pressable
                 accessibilityRole="button"
                 onPress={handleResetPassword}
+                disabled={isLoading}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  pressed && styles.pressed,
+                  (pressed || isLoading) && styles.pressed,
+                  isLoading && { opacity: 0.7 },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>
-                  Xác nhận và đặt lại mật khẩu
-                </Text>
-                <ArrowRight size={16} color="#FFFFFF" />
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.primaryButtonText}>
+                      Xác nhận và đặt lại mật khẩu
+                    </Text>
+                    <ArrowRight size={16} color="#FFFFFF" />
+                  </>
+                )}
               </Pressable>
 
               <Pressable

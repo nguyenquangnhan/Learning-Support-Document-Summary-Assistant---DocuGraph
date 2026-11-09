@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,13 +14,34 @@ import {
 import { useRouter } from "expo-router";
 import { ArrowLeft, ArrowRight, Info, Mail } from "lucide-react-native";
 import AuthHeader from "../../components/auth/AuthHeader";
+import { supabase } from "../../lib/supabase";
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleRequestOTP = () => {
-    router.push({ pathname: "/(auth)/verify-otp", params: { email } });
+  const handleRequestOTP = async () => {
+    if (!email.trim()) {
+      setErrorMessage("Vui lòng nhập địa chỉ email của bạn.");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email.trim());
+      if (error) {
+        setErrorMessage(error.message);
+        setIsLoading(false);
+        return;
+      }
+      router.push({ pathname: "/(auth)/verify-otp", params: { email: email.trim() } });
+    } catch (err: any) {
+      setErrorMessage(err.message || "Gửi yêu cầu thất bại.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -68,16 +90,31 @@ export default function ForgotPasswordScreen() {
                 </Text>
               </View>
 
+              {/* Thông báo lỗi */}
+              {errorMessage ? (
+                <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" }}>
+                  <Text style={{ color: "#DC2626", fontSize: 12, fontWeight: "500" }}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
               <Pressable
                 accessibilityRole="button"
                 onPress={handleRequestOTP}
+                disabled={isLoading}
                 style={({ pressed }) => [
                   styles.primaryButton,
-                  pressed && styles.pressed,
+                  (pressed || isLoading) && styles.pressed,
+                  isLoading && { opacity: 0.7 },
                 ]}
               >
-                <Text style={styles.primaryButtonText}>Gửi mã xác thực</Text>
-                <ArrowRight size={14} color="#FFFFFF" />
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.primaryButtonText}>Gửi mã xác thực</Text>
+                    <ArrowRight size={14} color="#FFFFFF" />
+                  </>
+                )}
               </Pressable>
 
               <Pressable

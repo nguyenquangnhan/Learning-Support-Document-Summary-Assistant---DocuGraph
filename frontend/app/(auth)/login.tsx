@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,14 +14,55 @@ import {
 import { useRouter } from "expo-router";
 import { ArrowRight, Eye, EyeOff } from "lucide-react-native";
 import AuthHeader from "../../components/auth/AuthHeader";
+import { supabase } from "../../lib/supabase";
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = () => router.replace("/(tabs)");
+  const handleLogin = async () => {
+    if (!email.trim() || !password) {
+      setErrorMessage("Vui lòng nhập đầy đủ email và mật khẩu.");
+      return;
+    }
+    setIsLoading(true);
+    setErrorMessage("");
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (error) {
+        setErrorMessage(error.message);
+        setIsLoading(false);
+        return;
+      }
+
+      if (data.session) {
+        router.replace("/(tabs)");
+      }
+    } catch (err: any) {
+      setErrorMessage(err.message || "Đăng nhập thất bại.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+      });
+      if (error) setErrorMessage(error.message);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Lỗi đăng nhập Google");
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -36,7 +78,7 @@ export default function LoginScreen() {
 
               {/* Nút Google */}
               <Pressable
-                onPress={handleLogin}
+                onPress={handleGoogleLogin}
                 style={({ pressed }) => [styles.googleButton, pressed && styles.pressed]}
               >
                 <Text style={styles.googleIcon}>G</Text>
@@ -81,6 +123,13 @@ export default function LoginScreen() {
                 </View>
               </View>
 
+              {/* Thông báo lỗi nếu có */}
+              {errorMessage ? (
+                <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" }}>
+                  <Text style={{ color: "#DC2626", fontSize: 12, fontWeight: "500" }}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
               {/* Quên mật khẩu */}
               <Pressable onPress={() => router.push("/(auth)/forgot-password")} style={styles.forgotButton}>
                 <Text style={styles.linkText}>Quên mật khẩu?</Text>
@@ -89,10 +138,17 @@ export default function LoginScreen() {
               {/* Nút Đăng nhập */}
               <Pressable
                 onPress={handleLogin}
-                style={({ pressed }) => [styles.loginButton, pressed && styles.pressed]}
+                disabled={isLoading}
+                style={({ pressed }) => [styles.loginButton, (pressed || isLoading) && styles.pressed, isLoading && { opacity: 0.7 }]}
               >
-                <Text style={styles.loginButtonText}>Đăng nhập</Text>
-                <ArrowRight size={16} color="#FFFFFF" />
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <>
+                    <Text style={styles.loginButtonText}>Đăng nhập</Text>
+                    <ArrowRight size={16} color="#FFFFFF" />
+                  </>
+                )}
               </Pressable>
 
               {/* Chuyển sang Đăng ký */}

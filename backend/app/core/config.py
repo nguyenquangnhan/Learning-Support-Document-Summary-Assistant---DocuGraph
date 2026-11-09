@@ -24,8 +24,8 @@ class Settings(BaseSettings):
     POSTGRES_URL: str = "sqlite+aiosqlite:///./docugraph.db"
 
     # Supabase
-    SUPABASE_URL: str = "https://your-project.supabase.co"
-    SUPABASE_ANON_KEY: str = "mock-anon-key"
+    SUPABASE_URL: str = "https://wfibadajisvzpyezkraw.supabase.co"
+    SUPABASE_ANON_KEY: str = "sb_publishable_vAtN1SySYpLS7R4xkXgK8Q_4dNqiPvm"
     SUPABASE_SERVICE_ROLE_KEY: str = "mock-service-role-key"
 
     # Redis
