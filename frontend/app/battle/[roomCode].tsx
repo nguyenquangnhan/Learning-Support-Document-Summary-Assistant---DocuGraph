@@ -67,6 +67,10 @@ export default function BattleRoomScreen() {
       setIsFinished(true);
     }
   };
+  const handleFinishBattle = () => {
+    // Chuyển hướng sang màn hình Kết quả & Podium
+    router.replace('/battle/results');
+  };
 
   // Screen 11: Podium & Performance Summary
   if (isFinished) {

@@ -1,141 +1,134 @@
-import React, { useState } from "react";
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from "react-native";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
-import { GitFork, HelpCircle, Users, Volume2, Share2, Bookmark, CheckCircle2, ArrowLeft } from "lucide-react-native";
-import { api } from "../../lib/api";
+import React from 'react';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { ArrowLeft, Volume2, Share2, ExternalLink, Code2, GitFork, HelpCircle, Users } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 
-export default function DocumentDetailScreen() {
-  const { id } = useLocalSearchParams();
+export default function DocumentSummaryScreen() {
   const router = useRouter();
-  const [summaryMode, setSummaryMode] = useState<"tldr" | "detailed">("detailed");
-
-  const { data: document, isLoading } = useQuery({
-    queryKey: ["document", id],
-    queryFn: async () => {
-      try {
-        const res = await api.get(`/documents/${id}`);
-        return res.data;
-      } catch (e) {
-        return {
-          id: id,
-          title: "Giáo trình Giải tích Nâng cao - Chương 2: Phép tính Vi phân",
-          num_pages: 42,
-          file_type: "pdf",
-          status: "ready",
-          summary_tldr: "Chương này tập trung vào định nghĩa tính liên tục, đạo hàm cấp một và ứng dụng quy tắc L'Hôpital để khử dạng vô định 0/0. Định lý Weierstrass bảo đảm sự tồn tại của giá trị cực trị trên đoạn đóng.",
-          summary_detailed: `### 1. Tính liên tục & Giới hạn
-- **Định nghĩa:** Hàm $f(x)$ liên tục tại $x_0$ khi $\\lim_{x \\to x_0} f(x) = f(x_0)$.
-- **Định lý Weierstrass:** Mọi hàm liên tục trên $[a, b]$ đều đạt GTLN và GTNN.
-
-### 2. Đạo hàm & Ý nghĩa hình học
-- Đạo hàm thể hiện vận tốc tức thời và hệ số góc của tiếp tuyến:
-  $$f'(x) = \\lim_{h \\to 0} \\frac{f(x+h) - f(x)}{h}$$
-
-### 3. Quy tắc L'Hôpital
-- Khử dạng vô định: khi $\\lim \\frac{f(x)}{g(x)} = \\frac{0}{0}$ hoặc $\\frac{\\infty}{\\infty}$, ta có:
-  $$\\lim \\frac{f(x)}{g(x)} = \\lim \\frac{f'(x)}{g'(x)}$$
-`,
-        };
-      }
-    },
-  });
-
-  if (isLoading) {
-    return (
-      <View className="flex-1 bg-slate-900 justify-center items-center">
-        <ActivityIndicator size="large" color="#6366F1" />
-      </View>
-    );
-  }
 
   return (
-    <View className="flex-1 bg-slate-900">
-      <ScrollView className="flex-1 px-4 pt-4">
-        {/* Document Title Header */}
-        <View className="mb-4">
-          <Text className="text-xl font-bold text-white leading-snug">{document?.title}</Text>
-          <View className="flex-row items-center mt-2 space-x-2">
-            <View className="bg-indigo-500/20 px-2 py-0.5 rounded">
-              <Text className="text-indigo-400 text-xs font-semibold">{document?.num_pages} trang</Text>
-            </View>
-            <View className="bg-emerald-500/20 px-2 py-0.5 rounded ml-2">
-              <Text className="text-emerald-400 text-xs font-semibold">Đã lập Đồ thị Tri thức</Text>
-            </View>
-          </View>
-        </View>
+    <View className="flex-1 bg-white pt-12">
+      {/* Top Header Navigation */}
+      <View className="px-4 flex-row items-center justify-between pb-3 border-b border-slate-100">
+        <TouchableOpacity onPress={() => router.back()} className="p-1">
+          <ArrowLeft size={22} color="#334155" />
+        </TouchableOpacity>
 
-        {/* Mode Switcher: TL;DR vs Detailed */}
-        <View className="flex-row bg-slate-800 p-1 rounded-xl mb-4 border border-slate-700">
-          <TouchableOpacity
-            className={`flex-1 py-2 rounded-lg items-center ${summaryMode === "tldr" ? "bg-indigo-600" : ""}`}
-            onPress={() => setSummaryMode("tldr")}
-          >
-            <Text className={`text-xs font-semibold ${summaryMode === "tldr" ? "text-white" : "text-slate-400"}`}>
-              Tóm tắt nhanh (TL;DR)
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            className={`flex-1 py-2 rounded-lg items-center ${summaryMode === "detailed" ? "bg-indigo-600" : ""}`}
-            onPress={() => setSummaryMode("detailed")}
-          >
-            <Text className={`text-xs font-semibold ${summaryMode === "detailed" ? "text-white" : "text-slate-400"}`}>
-              Tóm tắt chi tiết (Bullet Points)
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* Audio Listen & Share Bar */}
-        <View className="flex-row justify-between items-center bg-slate-800/60 p-3 rounded-xl mb-5 border border-slate-700/60">
-          <TouchableOpacity className="flex-row items-center">
-            <Volume2 size={16} color="#818CF8" />
-            <Text className="text-indigo-300 text-xs font-medium ml-1.5">Nghe tóm tắt Audio (TTS)</Text>
-          </TouchableOpacity>
-          <View className="flex-row space-x-3">
-            <TouchableOpacity className="mr-3">
-              <Share2 size={16} color="#94A3B8" />
-            </TouchableOpacity>
-            <TouchableOpacity>
-              <Bookmark size={16} color="#94A3B8" />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Summary Content Body */}
-        <View className="bg-slate-800/90 border border-slate-700 p-5 rounded-2xl mb-8">
-          <Text className="text-slate-200 text-sm leading-relaxed">
-            {summaryMode === "tldr" ? document?.summary_tldr : document?.summary_detailed}
+        <View className="items-center flex-1 mx-2">
+          <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">TÀI LIỆU HỌC TẬP</Text>
+          <Text className="text-xs font-bold text-slate-800" numberOfLines={1}>
+            Tóm tắt: Hệ Điều Hành - C4
           </Text>
         </View>
+
+        <View className="flex-row items-center space-x-2">
+          <TouchableOpacity className="p-2 bg-indigo-50 rounded-full">
+            <Volume2 size={18} color="#4F46E5" />
+          </TouchableOpacity>
+          <TouchableOpacity className="p-2">
+            <Share2 size={18} color="#475569" />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Reading Progress Line */}
+      <View className="w-full bg-slate-100 h-1">
+        <View className="bg-indigo-600 h-1 w-[45%]" />
+      </View>
+
+      {/* Main Content Body */}
+      <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false}>
+        {/* Chapter Header */}
+        <View className="flex-row justify-between items-center mb-2">
+          <Text className="text-xs font-bold text-indigo-600 uppercase">CHƯƠNG 04</Text>
+          <Text className="text-xs text-slate-400 font-medium">45% đã đọc</Text>
+        </View>
+
+        <Text className="text-xl font-black text-slate-900 leading-tight mb-6">
+          Chương 4: Quản lý Tiến trình và Khóa chết (Deadlock)
+        </Text>
+
+        {/* Section Heading */}
+        <Text className="text-sm font-bold text-slate-900 mb-3">Điều kiện xảy ra Deadlock</Text>
+
+        {/* Bullet Points */}
+        <View className="space-y-3 mb-6">
+          <View className="flex-row items-start">
+            <Text className="text-indigo-600 font-bold mr-2 text-base">•</Text>
+            <Text className="text-xs text-slate-700 leading-relaxed flex-1">
+              <Text className="font-bold text-slate-900">Mutual Exclusion:</Text> Tài nguyên chỉ do một tiến trình sử dụng.
+            </Text>
+          </View>
+
+          <View className="flex-row items-start">
+            <Text className="text-indigo-600 font-bold mr-2 text-base">•</Text>
+            <Text className="text-xs text-slate-700 leading-relaxed flex-1">
+              <Text className="font-bold text-slate-900">Hold and Wait:</Text> Giữ tài nguyên và chờ tài nguyên khác.
+            </Text>
+          </View>
+
+          <View className="flex-row items-start">
+            <Text className="text-indigo-600 font-bold mr-2 text-base">•</Text>
+            <Text className="text-xs text-slate-700 leading-relaxed flex-1">
+              <Text className="font-bold text-slate-900">No Preemption:</Text> Không thể thu hồi tài nguyên cưỡng chế.
+            </Text>
+          </View>
+
+          <View className="flex-row items-start">
+            <Text className="text-indigo-600 font-bold mr-2 text-base">•</Text>
+            <Text className="text-xs text-slate-700 leading-relaxed flex-1">
+              <Text className="font-bold text-slate-900">Circular Wait:</Text> Các tiến trình chờ nhau thành vòng.
+            </Text>
+          </View>
+        </View>
+
+        {/* Code Snippet Box */}
+        <View className="bg-slate-50 border border-slate-200 rounded-2xl p-4 mb-6">
+          <View className="flex-row justify-between items-center mb-2 pb-2 border-b border-slate-200">
+            <Text className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">SEMAPHORE</Text>
+            <Code2 size={14} color="#64748B" />
+          </View>
+
+          <Text className="font-mono text-xs text-indigo-700 leading-relaxed">
+            wait(S);    <Text className="text-slate-400">// chiếm tài nguyên</Text>{'\n'}
+            <Text className="text-slate-400">/* vùng tới hạn */</Text>{'\n'}
+            signal(S);  <Text className="text-slate-400">// giải phóng</Text>
+          </Text>
+        </View>
+
+        {/* Citation Chip Badge */}
+        <TouchableOpacity className="bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 self-start flex-row items-center mb-8">
+          <Text className="text-xs font-bold text-indigo-700 mr-1.5">[Trang 24, Mục 3.2]</Text>
+          <ExternalLink size={12} color="#4F46E5" />
+        </TouchableOpacity>
       </ScrollView>
 
-      {/* Floating Action Bar: Mindmap, Quiz, Save Group */}
-      <View className="p-4 bg-slate-800/95 border-t border-slate-700 flex-row space-x-2">
-        <TouchableOpacity
-          className="flex-1 bg-indigo-600 py-3 px-2 rounded-xl flex-row justify-center items-center mr-2 active:opacity-80"
-          onPress={() => router.push({ pathname: "/(tabs)/graph", params: { docId: document?.id } })}
+      {/* Bottom Floating Quick Actions Toolbar */}
+      <View className="bg-white border-t border-slate-100 px-4 py-3 flex-row space-x-2">
+        <TouchableOpacity 
+          onPress={() => router.push('/(tabs)/graph')}
+          className="flex-1 bg-indigo-50/80 py-3 rounded-2xl items-center justify-center"
         >
-          <GitFork size={16} color="#FFFFFF" />
-          <Text className="text-white text-xs font-bold ml-1.5">Vẽ Mindmap</Text>
+          <GitFork size={18} color="#4F46E5" className="mb-1" />
+          <Text className="text-[11px] font-bold text-indigo-600">Vẽ Mindmap</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          className="flex-1 bg-slate-700 py-3 px-2 rounded-xl flex-row justify-center items-center mr-2 active:opacity-80"
-          onPress={() => router.push(`/battle/room?docId=${document?.id}`)}
+        <TouchableOpacity 
+          onPress={() => router.push('/battle')}
+          className="flex-1 py-3 rounded-2xl items-center justify-center bg-white"
         >
-          <HelpCircle size={16} color="#34D399" />
-          <Text className="text-emerald-300 text-xs font-bold ml-1.5">Sinh Quiz</Text>
+          <HelpCircle size={18} color="#475569" className="mb-1" />
+          <Text className="text-[11px] font-bold text-slate-600">Sinh Quiz</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          className="flex-1 bg-slate-700 py-3 px-2 rounded-xl flex-row justify-center items-center active:opacity-80"
-          onPress={() => router.push("/(tabs)/groups")}
+        <TouchableOpacity 
+          onPress={() => router.push('/(tabs)/groups')}
+          className="flex-1 py-3 rounded-2xl items-center justify-center bg-white"
         >
-          <Users size={16} color="#818CF8" />
-          <Text className="text-indigo-300 text-xs font-bold ml-1.5">Lưu vào Nhóm</Text>
+          <Users size={18} color="#475569" className="mb-1" />
+          <Text className="text-[11px] font-bold text-slate-600">Lưu vào Nhóm</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
-

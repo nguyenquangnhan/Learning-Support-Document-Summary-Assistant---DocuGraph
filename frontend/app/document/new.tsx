@@ -1,205 +1,188 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  SafeAreaView,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
 import * as DocumentPicker from 'expo-document-picker';
-import api from '../../lib/api';
+import { X, UploadCloud, CheckCircle2, Lock } from 'lucide-react-native';
+import { api } from '../../lib/api';
 
 type SummaryType = 'tldr' | 'detailed';
 
 export default function NewDocumentScreen() {
   const router = useRouter();
-  const [selectedFile, setSelectedFile] = useState<{
-    name: string;
-    uri: string;
-    mimeType: string;
-    size: number;
-  } | null>(null);
-  const [summaryType, setSummaryType] = useState<SummaryType>('tldr');
-  const [isUploading, setIsUploading] = useState(false);
-  const [progress, setProgress] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
+  const [summaryType, setSummaryType] = useState<SummaryType>('detailed');
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const handlePickFile = async () => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
-      copyToCacheDirectory: true,
-    });
-
-    if (!result.canceled && result.assets[0]) {
-      const asset = result.assets[0];
-      setSelectedFile({
-        name: asset.name,
-        uri: asset.uri,
-        mimeType: asset.mimeType ?? 'application/pdf',
-        size: asset.size ?? 0,
-      });
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!selectedFile) return;
-
-    setIsUploading(true);
-    setProgress('Đang tải lên...');
-
+  // Hàm chọn file từ bộ nhớ máy
+  const handlePickDocument = async () => {
     try {
-      const formData = new FormData();
-      formData.append('file', {
-        uri: selectedFile.uri,
-        name: selectedFile.name,
-        type: selectedFile.mimeType,
-      } as unknown as Blob);
-      formData.append('summary_type', summaryType);
-
-      setProgress('Trích xuất nội dung...');
-      const response = await api.post('/api/v1/documents/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'],
+        copyToCacheDirectory: true,
       });
 
-      setProgress('Tạo Vector Embedding...');
-      await new Promise(r => setTimeout(r, 1000));
-
-      setProgress('Xây dựng Đồ thị Tri thức...');
-      await new Promise(r => setTimeout(r, 1000));
-
-      const documentId: string = response.data.id;
-      router.replace(`/document/${documentId}`);
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        setSelectedFile(result.assets[0]);
+      }
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể tải lên tài liệu. Vui lòng thử lại.');
-    } finally {
-      setIsUploading(false);
-      setProgress(null);
+      Alert.alert('Lỗi', 'Không thể chọn tệp tin này');
     }
   };
 
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  // Hàm tải tệp lên server và chuyển tới màn hình tóm tắt
+  const handleUpload = async () => {
+    if (!selectedFile) {
+      Alert.alert('Thông báo', 'Vui lòng chọn một tệp tài liệu (PDF hoặc DOCX)');
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      // Giả lập/gọi API xử lý bóc tách tài liệu
+      // const formData = new FormData();
+      // formData.append('file', { uri: selectedFile.uri, name: selectedFile.name, type: selectedFile.mimeType } as any);
+      // const res = await api.post('/documents/upload', formData);
+
+      setTimeout(() => {
+        setIsProcessing(false);
+        router.push('/document/doc-123'); // Chuyển sang màn hình xem tóm tắt [id].tsx
+      }, 1500);
+    } catch (err) {
+      setIsProcessing(false);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi tải lên tài liệu');
+    }
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-white dark:bg-gray-950">
-      {/* Header */}
-      <View className="flex-row items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800">
-        <TouchableOpacity onPress={() => router.back()} className="mr-3">
-          <Ionicons name="arrow-back" size={24} color="#6366f1" />
-        </TouchableOpacity>
-        <Text className="text-lg font-bold text-gray-900 dark:text-white flex-1">
-          Tải tài liệu mới
-        </Text>
-      </View>
-
-      <ScrollView className="flex-1 px-4 py-6">
-        {/* File picker */}
-        <TouchableOpacity
-          onPress={handlePickFile}
-          disabled={isUploading}
-          className="border-2 border-dashed border-indigo-300 dark:border-indigo-700 rounded-2xl p-8 items-center mb-6"
-        >
-          {selectedFile ? (
-            <View className="items-center">
-              <Ionicons
-                name={selectedFile.mimeType.includes('pdf') ? 'document-text' : 'document'}
-                size={48}
-                color="#6366f1"
-              />
-              <Text className="text-gray-900 dark:text-white font-semibold mt-3 text-center">
-                {selectedFile.name}
-              </Text>
-              <Text className="text-gray-500 text-sm mt-1">
-                {formatFileSize(selectedFile.size)}
-              </Text>
-              <Text className="text-indigo-500 text-sm mt-2">Nhấn để đổi file</Text>
-            </View>
-          ) : (
-            <View className="items-center">
-              <Ionicons name="cloud-upload-outline" size={48} color="#a5b4fc" />
-              <Text className="text-gray-700 dark:text-gray-300 font-semibold mt-3">
-                Chọn file PDF hoặc DOCX
-              </Text>
-              <Text className="text-gray-400 text-sm mt-1">Tối đa 50MB</Text>
-            </View>
-          )}
-        </TouchableOpacity>
-
-        {/* Summary type */}
-        <Text className="text-gray-700 dark:text-gray-300 font-semibold mb-3">
-          Loại tóm tắt
-        </Text>
-        <View className="flex-row gap-3 mb-8">
-          {[
-            { id: 'tldr', label: 'TL;DR', desc: 'Tóm tắt ngắn gọn, nhanh nắm bắt', icon: 'flash' },
-            { id: 'detailed', label: 'Chi tiết', desc: 'Phân tích sâu, luận điểm đầy đủ', icon: 'book' },
-          ].map((opt) => (
-            <TouchableOpacity
-              key={opt.id}
-              onPress={() => setSummaryType(opt.id as SummaryType)}
-              className={`flex-1 rounded-2xl p-4 border-2 ${
-                summaryType === opt.id
-                  ? 'bg-indigo-50 dark:bg-indigo-900/30 border-indigo-500'
-                  : 'bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700'
-              }`}
-            >
-              <Ionicons
-                name={opt.icon as any}
-                size={24}
-                color={summaryType === opt.id ? '#6366f1' : '#9ca3af'}
-              />
-              <Text className={`font-semibold mt-2 ${summaryType === opt.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                {opt.label}
-              </Text>
-              <Text className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {opt.desc}
-              </Text>
-            </TouchableOpacity>
-          ))}
+    <View className="flex-1 bg-slate-900/40 justify-end">
+      <View className="bg-white rounded-t-3xl pt-4 pb-8 px-5 max-h-[92%] shadow-2xl">
+        {/* Header Modal */}
+        <View className="flex-row items-center justify-between border-b border-slate-100 pb-4 mb-4">
+          <Text className="text-lg font-bold text-slate-900">Thêm tài liệu học tập</Text>
+          <TouchableOpacity onPress={() => router.back()} className="p-1.5 rounded-full bg-slate-100">
+            <X size={18} color="#64748B" />
+          </TouchableOpacity>
         </View>
 
-        {/* Processing progress */}
-        {isUploading && progress && (
-          <View className="bg-indigo-50 dark:bg-indigo-900/30 rounded-2xl p-4 mb-6">
-            <View className="flex-row items-center gap-3">
-              <ActivityIndicator size="small" color="#6366f1" />
-              <Text className="text-indigo-700 dark:text-indigo-300 font-medium">
-                {progress}
-              </Text>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          {/* Tab Switcher */}
+          <View className="flex-row border-b border-slate-200 mb-5">
+            <TouchableOpacity className="flex-1 py-2.5 items-center border-b-2 border-indigo-600">
+              <Text className="text-xs font-bold text-indigo-600">Tải file (PDF/DOCX)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              onPress={() => router.push('/document/scan')}
+              className="flex-1 py-2.5 items-center border-b-2 border-transparent"
+            >
+              <Text className="text-xs font-bold text-slate-500">Chụp ảnh OCR Camera</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Upload Dropzone Area */}
+          <TouchableOpacity 
+            onPress={handlePickDocument}
+            className="border-2 border-dashed border-indigo-200 bg-indigo-50/40 rounded-2xl py-7 items-center justify-center mb-5 px-4"
+          >
+            <View className="p-3 bg-indigo-100/60 rounded-full mb-2">
+              <UploadCloud size={28} color="#4F46E5" />
             </View>
-            <Text className="text-xs text-gray-500 dark:text-gray-400 mt-2 ml-9">
-              Vui lòng không thoát ứng dụng
+            <Text className="text-xs text-slate-700 font-bold text-center mb-1">
+              {selectedFile ? selectedFile.name : 'Chạm để tải file từ máy'}
+            </Text>
+            <Text className="text-[11px] text-slate-400 font-medium text-center">
+              (Tối đa 50MB, 500 trang - PDF, DOCX)
+            </Text>
+          </TouchableOpacity>
+
+          {/* Option 1: TL;DR */}
+          <TouchableOpacity
+            onPress={() => setSummaryType('tldr')}
+            className={`p-4 rounded-2xl border flex-row items-center mb-3 ${
+              summaryType === 'tldr' ? 'bg-indigo-50/60 border-indigo-600' : 'bg-white border-slate-200'
+            }`}
+          >
+            <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
+              summaryType === 'tldr' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+            }`}>
+              {summaryType === 'tldr' && <View className="w-2 h-2 rounded-full bg-white" />}
+            </View>
+            <Text className="text-xs font-semibold text-slate-800 flex-1">
+              Tóm tắt TL;DR (Tổng quan ngắn gọn)
+            </Text>
+          </TouchableOpacity>
+
+          {/* Option 2: Key Takeaways */}
+          <TouchableOpacity
+            onPress={() => setSummaryType('detailed')}
+            className={`p-4 rounded-2xl border flex-row items-center mb-5 ${
+              summaryType === 'detailed' ? 'bg-indigo-50/60 border-indigo-600' : 'bg-white border-slate-200'
+            }`}
+          >
+            <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
+              summaryType === 'detailed' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+            }`}>
+              {summaryType === 'detailed' && <View className="w-2 h-2 rounded-full bg-white" />}
+            </View>
+            <Text className="text-xs font-bold text-slate-900 flex-1">
+              Tóm tắt chi tiết & Luận điểm chính (Key Takeaways)
+            </Text>
+          </TouchableOpacity>
+
+          {/* AI Progress Box */}
+          {isProcessing && (
+            <View className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-4">
+              <View className="flex-row justify-between items-center mb-2">
+                <Text className="text-xs font-bold text-indigo-700">Đang phân tích tri thức (75%)...</Text>
+                <ActivityIndicator size="small" color="#4F46E5" />
+              </View>
+
+              <View className="w-full h-1.5 bg-slate-200 rounded-full mb-4 overflow-hidden">
+                <View className="w-[75%] h-full bg-indigo-600 rounded-full" />
+              </View>
+
+              <View className="space-y-2">
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-xs font-semibold text-emerald-600 flex-1">1. PaddleOCR trích xuất chữ</Text>
+                  <CheckCircle2 size={14} color="#059669" />
+                </View>
+                <View className="flex-row items-center mb-1">
+                  <Text className="text-xs font-semibold text-emerald-600 flex-1">2. Gemini Vector Embedding</Text>
+                  <CheckCircle2 size={14} color="#059669" />
+                </View>
+                <View className="flex-row items-center">
+                  <Text className="text-xs font-bold text-indigo-600 flex-1">3. Trích xuất Đồ thị Tri thức (Đang chạy...)</Text>
+                </View>
+              </View>
+            </View>
+          )}
+
+          {/* Lock status info */}
+          <View className="flex-row items-center mb-5 px-1">
+            <Lock size={14} color="#64748B" className="mr-2" />
+            <Text className="text-[11px] text-slate-500 leading-tight flex-1">
+              Tạm khóa bắt đầu mới khi đang xử lý. Vui lòng chờ phân tích hoàn tất.
             </Text>
           </View>
-        )}
-      </ScrollView>
 
-      {/* Upload button */}
-      <View className="px-4 pb-6">
-        <TouchableOpacity
-          onPress={handleUpload}
-          disabled={!selectedFile || isUploading}
-          className={`rounded-2xl py-4 items-center ${
-            selectedFile && !isUploading
-              ? 'bg-indigo-600'
-              : 'bg-gray-200 dark:bg-gray-800'
-          }`}
-        >
-          {isUploading ? (
-            <ActivityIndicator color="white" />
-          ) : (
-            <Text className={`font-bold text-base ${selectedFile ? 'text-white' : 'text-gray-400'}`}>
-              {selectedFile ? 'Tải lên & Phân tích' : 'Chọn file trước'}
-            </Text>
-          )}
-        </TouchableOpacity>
+          {/* Primary Action Button */}
+          <TouchableOpacity
+            onPress={handleUpload}
+            disabled={isProcessing}
+            className={`py-3.5 rounded-2xl flex-row items-center justify-center mb-3 shadow-md ${
+              isProcessing ? 'bg-indigo-400' : 'bg-indigo-700 shadow-indigo-300'
+            }`}
+          >
+            <Lock size={16} color="#FFF" className="mr-2" />
+            <Text className="text-white font-bold text-xs">Bắt đầu bóc tách tài liệu</Text>
+          </TouchableOpacity>
+
+          {/* Cancel Button */}
+          <TouchableOpacity onPress={() => router.back()} className="py-2.5 items-center">
+            <Text className="text-xs text-slate-500 font-bold">Hủy bỏ</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </View>
-    </SafeAreaView>
+    </View>
   );
 }
