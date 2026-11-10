@@ -35,6 +35,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sl } from "../../src/core/di/injection_container";
 import { DocumentModel } from "../../src/features/documents/data/models/document_model";
 import { useAuthStore } from "../../stores/authStore";
+import { battleApi } from "../../lib/battleApi";
 
 interface GroupMember {
   id: string;
@@ -90,6 +91,7 @@ export default function GroupScreen() {
   const [joinCodeInput, setJoinCodeInput] = useState("");
   const [newMemberName, setNewMemberName] = useState("");
   const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [creatingBattle, setCreatingBattle] = useState(false);
 
   // Load user's personal uploaded documents so they can share 1-click into the group
   const { data: myDocuments = [], isLoading: isLoadingMyDocs } = useQuery({
@@ -204,6 +206,31 @@ export default function GroupScreen() {
     }
     return Array.from(map.values());
   }, [activeGroup, myDocuments, currentUserName]);
+
+  // Tạo phòng Đấu trí Trắc nghiệm cho nhóm
+  const handleCreateGroupBattle = async () => {
+    const firstDoc = groupResources[0];
+    if (!firstDoc) {
+      showToast("Nhóm chưa có tài liệu nào để thi đấu. Hãy tải tài liệu lên trước!");
+      return;
+    }
+    setCreatingBattle(true);
+    try {
+      const room = await battleApi.createRoom({
+        hostId: user?.id || `usr_${Date.now().toString(36)}`,
+        hostName: currentUserName || "Chủ phòng",
+        documentId: firstDoc.id,
+        documentTitle: firstDoc.title,
+        numQuestions: 5,
+      });
+      showToast(`Đã tạo phòng đấu trí: ${room.room_code}`);
+      router.push({ pathname: `/battle/${room.room_code}` as any });
+    } catch (err: any) {
+      showToast(err.message || "Không thể tạo phòng đấu trí");
+    } finally {
+      setCreatingBattle(false);
+    }
+  };
 
   // 1. Copy Group Code
   const handleCopyGroupCode = async () => {
@@ -709,18 +736,37 @@ export default function GroupScreen() {
 
               {/* Action Battle Room */}
               <TouchableOpacity
-                onPress={() => {
-                  const firstDocId = groupResources[0]?.id || "";
-                  router.push({
-                    pathname: `/battle/${activeGroup.code}` as any,
-                    params: firstDocId ? { documentId: firstDocId } : {},
-                  });
-                }}
-                className="bg-indigo-600 py-4 rounded-2xl flex-row items-center justify-center shadow-md shadow-indigo-200"
+                onPress={handleCreateGroupBattle}
+                disabled={creatingBattle}
+                className={`py-4 rounded-2xl flex-row items-center justify-center shadow-md shadow-indigo-200 mb-3 ${
+                  creatingBattle ? "bg-indigo-400" : "bg-indigo-600 active:bg-indigo-700"
+                }`}
               >
-                <Swords size={20} color="#FFF" />
-                <Text className="text-white font-bold text-sm ml-2">
-                  Tạo phòng Đấu trí Trắc nghiệm nhóm ({activeGroup.code})
+                {creatingBattle ? (
+                  <>
+                    <ActivityIndicator size="small" color="#FFF" />
+                    <Text className="text-white font-bold text-sm ml-2">
+                      Đang khởi tạo phòng thi đấu...
+                    </Text>
+                  </>
+                ) : (
+                  <>
+                    <Swords size={20} color="#FFF" />
+                    <Text className="text-white font-bold text-sm ml-2">
+                      Tạo phòng Đấu trí Trắc nghiệm từ tài liệu nhóm
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+
+              {/* Vào Sảnh Đấu trí để nhập mã phòng */}
+              <TouchableOpacity
+                onPress={() => router.push("/battle" as any)}
+                className="bg-slate-100 border border-slate-200 py-3 rounded-2xl flex-row items-center justify-center mb-6"
+              >
+                <Users size={16} color="#475569" />
+                <Text className="text-slate-700 font-semibold text-xs ml-2">
+                  Đã có mã phòng? Vào Sảnh Đấu trí nhập mã
                 </Text>
               </TouchableOpacity>
             </>

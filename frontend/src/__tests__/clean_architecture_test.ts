@@ -2,14 +2,13 @@
  * DocuGraph AI – Automated Unit Test Suite (AAA Pattern: Arrange, Act, Assert)
  * Course Alignment: Week 9 (Slides 33-35: Unit Testing Use Cases & Repository Implementation)
  */
-import { right, ValidationFailure } from "../core/errors/failures";
+import { right, ValidationFailure, Failure, unit, Either, Unit } from "../core/errors/failures";
 import { OcrScanResult } from "../features/scanner/domain/entities/ocr_scan_result";
 import { ScannerRepository } from "../features/scanner/domain/repositories/scanner_repository";
 import { ScanDocumentUseCase } from "../features/scanner/domain/usecases/scan_document_usecase";
 import { HeuristicRegexParser } from "../features/scanner/data/utils/heuristic_regex_parser";
 import { DocumentRepositoryImpl } from "../features/documents/data/repositories/document_repository_impl";
 import { DocumentModel } from "../features/documents/data/models/document_model";
-import { unit } from "../core/errors/failures";
 
 // 1. Mock ScannerRepository conforming to Domain interface (Week 9 Slide 33)
 class MockScannerRepository implements ScannerRepository {
@@ -28,13 +27,13 @@ class MockScannerRepository implements ScannerRepository {
     blocks: [{ text: "Chương 4: Deadlock", linesCount: 1 }],
   });
 
-  async recognizeTextFromImage(_imageUri: string) {
+  async recognizeTextFromImage(_imageUri: string): Promise<Either<Failure, OcrScanResult>> {
     this.callCount++;
-    return right(this.mockResult);
+    return right<Failure, OcrScanResult>(this.mockResult);
   }
 
-  async dispose() {
-    return right(unit);
+  async dispose(): Promise<Either<Failure, Unit>> {
+    return right<Failure, Unit>(unit);
   }
 }
 
@@ -122,6 +121,7 @@ export async function runAllCleanArchitectureTests(): Promise<{
       },
       fetchDocumentById: async (id: string) => cachedDocs[0],
       uploadOcrDocument: async () => cachedDocs[0],
+      deleteDocument: async (_id: string) => true,
     };
 
     const mockLocal = {
@@ -131,6 +131,7 @@ export async function runAllCleanArchitectureTests(): Promise<{
         cachedDocs = docs;
       },
       upsertCachedDocument: async () => {},
+      removeCachedDocument: async (_id: string) => {},
       enqueueOfflineOcrSync: async () => cachedDocs[0],
       getOfflineSyncQueue: async () => [],
       clearSyncedItemFromQueue: async () => {},

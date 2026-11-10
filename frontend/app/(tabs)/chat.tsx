@@ -11,7 +11,6 @@ import {
   TextInput,
   TouchableOpacity,
   ScrollView,
-  FileText,
 } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { Send, Sparkles, BookOpen, User, Bot, FileCheck2 } from "lucide-react-native";

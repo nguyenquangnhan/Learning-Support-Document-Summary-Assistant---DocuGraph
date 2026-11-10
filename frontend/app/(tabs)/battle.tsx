@@ -1,250 +1,217 @@
 /**
- * DocuGraph AI – Presentation Layer: Personal AI Quiz & Battle Screen
- * Course Alignment: Week 9 (Uses GetDocumentQuizUseCase via Service Locator sl + Either.fold)
+ * DocuGraph AI – Sảnh Đấu trí (Battle Lobby)
+ *  - Chủ phòng: chọn tài liệu -> Tạo phòng -> nhận mã phòng 6 số
+ *  - Người chơi: nhập mã phòng -> vào phòng chờ
+ *  - Chỉ khi chủ phòng bấm "Bắt đầu" thì tất cả mới cùng chơi
  */
-import React, { useState, useEffect } from "react";
-import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from "react-native";
-import { X, Zap, CheckCircle2, AlertCircle, RotateCcw } from "lucide-react-native";
+import React, { useState } from "react";
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter, useLocalSearchParams } from "expo-router";
+import { useQuery } from "@tanstack/react-query";
+import { Swords, LogIn, Crown, FileText, CheckCircle2 } from "lucide-react-native";
 import { sl } from "../../src/core/di/injection_container";
-import { QuizQuestionEntity } from "../../src/features/quiz/quiz_slice";
+import { useAuthStore } from "../../stores/authStore";
+import { battleApi } from "../../lib/battleApi";
 
-export default function BattleScreen() {
+export default function BattleLobbyScreen() {
   const router = useRouter();
-  const { documentId } = useLocalSearchParams<{ documentId?: string }>();
+  const { documentId: presetDocId } = useLocalSearchParams<{ documentId?: string }>();
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id || "";
+  const userName = user?.full_name?.trim() || user?.email?.split("@")[0] || "Người chơi";
 
-  const [questions, setQuestions] = useState<QuizQuestionEntity[]>([]);
-  const [currentIdx, setCurrentIdx] = useState(0);
-  const [selectedKey, setSelectedKey] = useState<"A" | "B" | "C" | "D" | null>(null);
-  const [score, setScore] = useState(980);
-  const [timeLeft, setTimeLeft] = useState(15);
-  const [loading, setLoading] = useState(true);
+  const [selectedDocId, setSelectedDocId] = useState<string>(presetDocId || "");
+  const [roomCodeInput, setRoomCodeInput] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [joining, setJoining] = useState(false);
+  const [error, setError] = useState("");
 
-  const loadQuiz = async () => {
-    setLoading(true);
-    let targetDocId = documentId || "";
-    if (!targetDocId) {
-      const docsEither = await sl.getDocumentsUseCase.call();
-      docsEither.fold(
-        () => {},
-        (docs) => {
-          if (docs.length > 0) targetDocId = docs[0].id;
-        }
+  const { data: documents = [], isLoading } = useQuery({
+    queryKey: ["documents", userId || "guest"],
+    queryFn: async () => {
+      const res = await sl.getDocumentsUseCase.call();
+      return res.fold(
+        () => [],
+        (list) => list
       );
-    }
+    },
+  });
 
-    if (!targetDocId) {
-      setQuestions([]);
-      setLoading(false);
+  const effectiveDocId = selectedDocId || documents[0]?.id || "";
+
+  const handleCreateRoom = async () => {
+    setError("");
+    if (!userId) {
+      setError("Vui lòng đăng nhập để tạo phòng đấu trí.");
       return;
     }
-
-    const quizEither = await sl.getDocumentQuizUseCase.call(targetDocId, 5);
-    setLoading(false);
-
-    quizEither.fold(
-      () => {},
-      (list) => {
-        setQuestions(list);
-        setCurrentIdx(0);
-        setSelectedKey(null);
-        setTimeLeft(15);
-      }
-    );
-  };
-
-  useEffect(() => {
-    loadQuiz();
-  }, [documentId]);
-
-  useEffect(() => {
-    if (loading || selectedKey !== null || questions.length === 0) return;
-    if (timeLeft > 0) {
-      const t = setTimeout(() => setTimeLeft((s) => s - 1), 1000);
-      return () => clearTimeout(t);
+    const doc = documents.find((d) => d.id === effectiveDocId);
+    if (!doc) {
+      setError("Bạn cần chọn một tài liệu trong Tủ sách để làm đề thi.");
+      return;
     }
-  }, [timeLeft, loading, selectedKey, questions.length]);
-
-  const currentQuestion = questions[currentIdx];
-
-  const handleSelectOption = (key: "A" | "B" | "C" | "D") => {
-    if (selectedKey !== null || !currentQuestion) return;
-    setSelectedKey(key);
-    if (key === currentQuestion.correctOption) {
-      setScore((prev) => prev + 100 + timeLeft * 10);
+    setCreating(true);
+    try {
+      const room = await battleApi.createRoom({
+        hostId: userId,
+        hostName: userName,
+        documentId: doc.id,
+        documentTitle: doc.title,
+        numQuestions: 5,
+      });
+      router.push(`/battle/${room.room_code}`);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleNextQuestion = () => {
-    if (currentIdx + 1 < questions.length) {
-      setCurrentIdx((i) => i + 1);
-      setSelectedKey(null);
-      setTimeLeft(15);
-    } else {
-      router.push("/battle/results");
+  const handleJoinRoom = async () => {
+    setError("");
+    const code = roomCodeInput.trim();
+    if (!userId) {
+      setError("Vui lòng đăng nhập để vào phòng đấu trí.");
+      return;
+    }
+    if (!/^\d{6}$/.test(code)) {
+      setError("Mã phòng gồm đúng 6 chữ số.");
+      return;
+    }
+    setJoining(true);
+    try {
+      await battleApi.joinRoom(code, userId, userName);
+      router.push(`/battle/${code}`);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setJoining(false);
     }
   };
-
-  if (loading) {
-    return (
-      <View className="flex-1 bg-slate-50 items-center justify-center">
-        <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="text-xs font-semibold text-slate-500 mt-3">
-          Đang sinh câu hỏi trắc nghiệm AI từ tài liệu...
-        </Text>
-      </View>
-    );
-  }
-
-  if (questions.length === 0) {
-    return (
-      <View className="flex-1 bg-slate-50 items-center justify-center px-6">
-        <Zap size={38} color="#4F46E5" />
-        <Text className="text-base font-bold text-slate-800 mt-3 text-center">
-          Chưa có tài liệu để tạo câu hỏi Trắc nghiệm AI
-        </Text>
-        <Text className="text-xs text-slate-500 text-center mt-1.5 leading-5">
-          Hãy tải lên giáo trình hoặc quét OCR tài liệu trước, sau đó quay lại đây để ôn tập trắc nghiệm theo Đồ thị Tri thức.
-        </Text>
-      </View>
-    );
-  }
 
   return (
-    <View className="flex-1 bg-slate-50 pt-12">
-      {/* Header */}
-      <View className="px-4 flex-row items-center justify-between pb-2">
-        <View>
-          <Text className="text-xs text-slate-400 font-bold uppercase">ĐẤU TRÍ TRẮC NGHIỆM AI</Text>
-          <Text className="text-sm font-bold text-slate-800">
-            Ôn tập theo Đồ thị Tri thức
-          </Text>
-        </View>
-        <View className="flex-row items-center space-x-2">
-          <TouchableOpacity onPress={loadQuiz} className="p-2 bg-indigo-50 rounded-full mr-1">
-            <RotateCcw size={16} color="#4F46E5" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => router.back()} className="p-1">
-            <X size={20} color="#64748B" />
-          </TouchableOpacity>
-        </View>
-      </View>
+    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
+      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
+        <Text className="text-xs font-bold text-indigo-600 uppercase">Đấu trí trắc nghiệm</Text>
+        <Text className="text-2xl font-black text-slate-900 mt-1">Phòng thi đấu nhiều người</Text>
+        <Text className="text-xs text-slate-500 mt-1 leading-5">
+          Chủ phòng tạo phòng và chia sẻ mã 6 số. Mọi người nhập mã để vào phòng chờ, khi chủ phòng
+          bấm "Bắt đầu" tất cả sẽ cùng trả lời từng câu hỏi tại cùng một thời điểm.
+        </Text>
 
-      {/* Room Status */}
-      <View className="px-4 flex-row justify-between items-center mb-3">
-        <Text className="text-xs font-bold text-indigo-600">PIN: 8392</Text>
-        <Text className="text-xs text-emerald-600 font-medium">● 12/20 Đang thi đấu</Text>
-      </View>
-
-      {/* Timer Semi-Circle */}
-      <View className="items-center mb-4">
-        <View className="w-28 h-14 border-t-8 border-l-8 border-r-8 border-amber-400 rounded-t-full items-center justify-end pb-1">
-          <Text className="text-xl font-black text-slate-900">{timeLeft}</Text>
-          <Text className="text-[10px] text-slate-400 font-semibold">giây còn lại</Text>
-        </View>
-      </View>
-
-      {/* Question Card & Options */}
-      {currentQuestion && (
-        <ScrollView className="px-4 flex-1" showsVerticalScrollIndicator={false}>
-          <View className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm mb-4">
-            <Text className="text-xs font-bold text-indigo-600 uppercase mb-2">
-              CÂU {currentIdx + 1} / {questions.length}
-            </Text>
-            <Text className="text-sm font-bold text-slate-900 leading-snug mb-3">
-              {currentQuestion.question}
-            </Text>
-
-            <View className="bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200 self-start flex-row items-center">
-              <Zap size={12} color="#D97706" className="mr-1" />
-              <Text className="text-xs text-amber-700 font-bold">
-                +{100 + timeLeft * 10} pts (Thưởng tốc độ!)
-              </Text>
-            </View>
+        {error ? (
+          <View className="bg-red-50 border border-red-200 rounded-xl p-3 mt-4">
+            <Text className="text-xs font-semibold text-red-600">{error}</Text>
           </View>
+        ) : null}
 
-          {/* Options */}
-          {currentQuestion.optionsList.map((opt) => {
-            const isSelected = selectedKey === opt.key;
-            const isCorrect = opt.key === currentQuestion.correctOption;
+        {/* Vào phòng bằng mã */}
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 mt-5">
+          <View className="flex-row items-center mb-3">
+            <LogIn size={18} color="#4F46E5" />
+            <Text className="text-sm font-bold text-slate-800 ml-2">Vào phòng bằng mã</Text>
+          </View>
+          <TextInput
+            value={roomCodeInput}
+            onChangeText={(t) => setRoomCodeInput(t.replace(/\D/g, "").slice(0, 6))}
+            placeholder="Nhập mã phòng 6 số"
+            placeholderTextColor="#94A3B8"
+            keyboardType="number-pad"
+            maxLength={6}
+            className="border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold tracking-[6px] text-center text-slate-900"
+          />
+          <Pressable
+            onPress={handleJoinRoom}
+            disabled={joining}
+            className="mt-3 bg-indigo-600 rounded-xl py-3 items-center"
+          >
+            {joining ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <Text className="text-white font-bold text-sm">Vào phòng</Text>
+            )}
+          </Pressable>
+        </View>
 
-            let cardStyle = "bg-white border-slate-200";
-            let badgeStyle = "bg-slate-100";
-            let badgeText = "text-slate-600";
+        {/* Tạo phòng mới (chủ phòng) */}
+        <View className="bg-white rounded-2xl border border-slate-200 p-4 mt-4">
+          <View className="flex-row items-center mb-1">
+            <Crown size={18} color="#F59E0B" />
+            <Text className="text-sm font-bold text-slate-800 ml-2">Tạo phòng mới (Chủ phòng)</Text>
+          </View>
+          <Text className="text-xs text-slate-500 mb-3">
+            Chọn tài liệu để AI sinh đề thi trắc nghiệm cho cả phòng:
+          </Text>
 
-            if (selectedKey !== null) {
-              if (isCorrect) {
-                cardStyle = "bg-emerald-50 border-emerald-500";
-                badgeStyle = "bg-emerald-600";
-                badgeText = "text-white";
-              } else if (isSelected) {
-                cardStyle = "bg-rose-50 border-rose-500";
-                badgeStyle = "bg-rose-600";
-                badgeText = "text-white";
-              }
-            } else if (isSelected) {
-              cardStyle = "bg-indigo-50 border-indigo-600";
-              badgeStyle = "bg-indigo-600";
-              badgeText = "text-white";
-            }
-
-            return (
-              <TouchableOpacity
-                key={opt.key}
-                disabled={selectedKey !== null}
-                onPress={() => handleSelectOption(opt.key)}
-                className={`p-3.5 rounded-2xl border mb-2.5 flex-row items-center ${cardStyle}`}
+          {isLoading ? (
+            <ActivityIndicator color="#4F46E5" />
+          ) : documents.length === 0 ? (
+            <View className="items-center py-3">
+              <Text className="text-xs text-slate-500 text-center mb-2">
+                Tủ sách của bạn đang trống. Hãy tải tài liệu lên trước khi tạo phòng.
+              </Text>
+              <Pressable
+                onPress={() => router.push("/document/new")}
+                className="bg-indigo-50 border border-indigo-200 px-4 py-2 rounded-xl"
               >
-                <View className={`w-8 h-8 rounded-xl items-center justify-center mr-3 ${badgeStyle}`}>
-                  <Text className={`font-bold text-xs ${badgeText}`}>{opt.key}</Text>
-                </View>
-                <Text className="font-semibold text-slate-800 text-xs flex-1">{opt.text}</Text>
-              </TouchableOpacity>
-            );
-          })}
-
-          {/* Explanation & Next Button */}
-          {selectedKey !== null && (
-            <View className="mt-2 mb-6">
-              <View className="bg-indigo-50 border border-indigo-200 rounded-2xl p-3.5 mb-3 flex-row items-start">
-                {selectedKey === currentQuestion.correctOption ? (
-                  <CheckCircle2 size={16} color="#059669" />
-                ) : (
-                  <AlertCircle size={16} color="#E11D48" />
-                )}
-                <Text className="text-xs text-slate-700 ml-2 flex-1 leading-relaxed">
-                  <Text className="font-bold">Giải thích: </Text>
-                  {currentQuestion.explanation}
-                </Text>
-              </View>
-
-              <TouchableOpacity
-                onPress={handleNextQuestion}
-                className="bg-indigo-600 py-3.5 rounded-2xl items-center"
-              >
-                <Text className="text-white font-bold text-xs">
-                  {currentIdx + 1 < questions.length
-                    ? "Câu hỏi tiếp theo →"
-                    : "Xem Bảng Xếp Hạng Chung Cuộc 🏆"}
-                </Text>
-              </TouchableOpacity>
+                <Text className="text-indigo-700 font-bold text-xs">+ Tải tài liệu lên</Text>
+              </Pressable>
             </View>
+          ) : (
+            documents.slice(0, 8).map((doc) => {
+              const active = doc.id === effectiveDocId;
+              return (
+                <Pressable
+                  key={doc.id}
+                  onPress={() => setSelectedDocId(doc.id)}
+                  className={`flex-row items-center p-3 rounded-xl border mb-2 ${
+                    active ? "bg-indigo-50 border-indigo-500" : "bg-white border-slate-200"
+                  }`}
+                >
+                  <FileText size={16} color={active ? "#4F46E5" : "#64748B"} />
+                  <Text
+                    numberOfLines={1}
+                    className={`flex-1 ml-2 text-xs ${
+                      active ? "font-bold text-indigo-700" : "font-medium text-slate-700"
+                    }`}
+                  >
+                    {doc.title}
+                  </Text>
+                  {active && <CheckCircle2 size={16} color="#4F46E5" />}
+                </Pressable>
+              );
+            })
           )}
-        </ScrollView>
-      )}
 
-      {/* Live Leaderboard */}
-      <View className="bg-white p-4 border-t border-slate-200">
-        <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-slate-400 uppercase">BẢNG XẾP HẠNG TRỰC TIẾP</Text>
-          <Text className="text-[10px] text-emerald-600 font-bold">● LIVE</Text>
+          <Pressable
+            onPress={handleCreateRoom}
+            disabled={creating || documents.length === 0}
+            className={`mt-2 rounded-xl py-3 flex-row items-center justify-center ${
+              documents.length === 0 ? "bg-slate-300" : "bg-amber-500"
+            }`}
+          >
+            {creating ? (
+              <>
+                <ActivityIndicator color="#FFF" />
+                <Text className="text-white font-bold text-xs ml-2">Đang sinh đề thi AI...</Text>
+              </>
+            ) : (
+              <>
+                <Swords size={16} color="#FFF" />
+                <Text className="text-white font-bold text-sm ml-2">Tạo phòng đấu trí</Text>
+              </>
+            )}
+          </Pressable>
         </View>
-        <View className="flex-row justify-around">
-          <Text className="text-xs font-bold text-slate-700">Tuấn: 1250 pts</Text>
-          <Text className="text-xs font-bold text-indigo-600">Minh (Bạn): {score} pts</Text>
-          <Text className="text-xs font-bold text-slate-700">Linh: 850 pts</Text>
-        </View>
-      </View>
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
