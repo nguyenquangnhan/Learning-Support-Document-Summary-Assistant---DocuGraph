@@ -13,7 +13,7 @@ class Settings(BaseSettings):
     # Gemini
     GEMINI_API_KEY: str = "mock-gemini-key"
     GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-001"
 
     # Neo4j
     NEO4J_URI: str = "bolt://localhost:7687"
@@ -23,14 +23,16 @@ class Settings(BaseSettings):
     # Database (PostgreSQL or local SQLite for development)
     POSTGRES_URL: str = "sqlite+aiosqlite:///./docugraph.db"
 
-    # Supabase
+    # Supabase (Frontend & Server Keys + JWKS URL)
     SUPABASE_URL: str = "https://wfibadajisvzpyezkraw.supabase.co"
+    SUPABASE_PUBLISHABLE_KEY: str = "sb_publishable_vAtN1SySYpLS7R4xkXgK8Q_4dNqiPvm"
     SUPABASE_ANON_KEY: str = "sb_publishable_vAtN1SySYpLS7R4xkXgK8Q_4dNqiPvm"
+    SUPABASE_SECRET_KEY: str = ""
     SUPABASE_SERVICE_ROLE_KEY: str = "mock-service-role-key"
+    SUPABASE_JWKS_URL: str = "https://wfibadajisvzpyezkraw.supabase.co/auth/v1/.well-known/jwks.json"
 
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
-    
 
     # Storage
     SUPABASE_STORAGE_BUCKET: str = "docugraph-files"
@@ -44,7 +46,7 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
+        extra = "ignore"
 
 
 settings = Settings()
-

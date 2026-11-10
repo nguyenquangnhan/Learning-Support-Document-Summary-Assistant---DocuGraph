@@ -1,21 +1,30 @@
 import axios from "axios";
+import { Platform } from "react-native";
 import { useAuthStore } from "../stores/authStore";
 
-// Default to backend port 8000 (configurable via EXPO_PUBLIC_API_URL)
-const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://10.0.2.2:8000"; // 10.0.2.2 for Android emulator, localhost for iOS simulator
+const defaultUrl =
+  Platform.OS === "android" ? "http://10.0.2.2:8000" : "http://localhost:8000";
+
+const rawApiUrl = (process.env.EXPO_PUBLIC_API_URL || defaultUrl).replace(/\/+$/, "");
+const baseURL = rawApiUrl.endsWith("/api/v1") ? rawApiUrl : `${rawApiUrl}/api/v1`;
 
 export const api = axios.create({
-  baseURL: `${API_URL}/api/v1`,
+  baseURL,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
 api.interceptors.request.use((config) => {
-  const token = useAuthStore.getState().sessionToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  const { sessionToken, user } = useAuthStore.getState();
+  if (sessionToken) {
+    config.headers.Authorization = `Bearer ${sessionToken}`;
+  }
+  if (user?.id) {
+    config.headers["X-User-Id"] = user.id;
   }
   return config;
 });
 
+export default api;

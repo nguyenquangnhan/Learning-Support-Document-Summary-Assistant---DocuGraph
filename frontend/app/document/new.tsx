@@ -1,45 +1,86 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
-import { X, UploadCloud, CheckCircle2, Lock } from 'lucide-react-native';
+import { X, UploadCloud, CheckCircle2, Lock, Clock, FileText, ChevronRight, Trash2 } from 'lucide-react-native';
 import { api } from '../../lib/api';
+import { useAuthStore } from '../../stores/authStore';
+import { sl } from '../../src/core/di/injection_container';
+import { DocumentModel } from '../../src/features/documents/data/models/document_model';
 
 type SummaryType = 'tldr' | 'detailed';
 
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export default function NewDocumentScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const user = useAuthStore((state) => state.user);
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [summaryType, setSummaryType] = useState<SummaryType>('detailed');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [processStep, setProcessStep] = useState<string>('Đang tải lên...');
+  const [progressPercent, setProgressPercent] = useState<number>(0);
+  const [currentStage, setCurrentStage] = useState<number>(0); // 0: chưa chạy, 1: OCR, 2: Embedding, 3: Graph, 4: Hoàn tất
+  const [processStep, setProcessStep] = useState<string>('Chờ chọn tệp để bắt đầu bóc tách...');
+  const [errorMessage, setErrorMessage] = useState<string>('');
+
+  const { data: uploadedHistory = [] } = useQuery({
+    queryKey: ['documents', user?.id || 'guest'],
+    queryFn: async () => {
+      const resEither = await sl.getDocumentsUseCase.call();
+      return resEither.fold(
+        () => [],
+        (list) => list
+      );
+    },
+  });
 
   // Hàm chọn file từ bộ nhớ máy
   const handlePickDocument = async () => {
+    if (isProcessing) return;
+    setErrorMessage('');
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'text/plain'],
+        type: [
+          'application/pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'text/plain',
+        ],
         copyToCacheDirectory: true,
       });
 
       if (!result.canceled && result.assets && result.assets.length > 0) {
         setSelectedFile(result.assets[0]);
+        setProgressPercent(0);
+        setCurrentStage(0);
+        setProcessStep(`Đã chọn: ${result.assets[0].name} (Sẵn sàng 0%)`);
       }
-    } catch (error) {
-      Alert.alert('Lỗi', 'Không thể chọn tệp tin này');
+    } catch {
+      setErrorMessage('Không thể chọn tệp tin này.');
     }
   };
 
-  // Hàm tải tệp lên server và chuyển tới màn hình tóm tắt
+  // Hàm tải tệp lên server, cập nhật tiến trình từng bước và chuyển tới màn hình tóm tắt
   const handleUpload = async () => {
     if (!selectedFile) {
-      Alert.alert('Thông báo', 'Vui lòng chọn một tệp tài liệu (PDF hoặc DOCX)');
+      setErrorMessage('Vui lòng chạm vào khung bên trên để chọn một tệp tài liệu (PDF, DOCX hoặc TXT) trước khi bóc tách.');
+      if (Platform.OS !== 'web') {
+        Alert.alert('Thông báo', 'Vui lòng chọn một tệp tài liệu (PDF hoặc DOCX)');
+      }
       return;
     }
 
+    setErrorMessage('');
     setIsProcessing(true);
-    setProcessStep('Đang trích xuất nội dung văn bản...');
+
     try {
+      // Bước 1: Bóc tách văn bản (35%)
+      setCurrentStage(1);
+      setProgressPercent(35);
+      setProcessStep('Đang trích xuất văn bản bằng OCR (35%)...');
+      await wait(600);
+
       const formData = new FormData();
       if (Platform.OS === 'web' && (selectedFile as any).file) {
         formData.append('file', (selectedFile as any).file);
@@ -57,20 +98,64 @@ export default function NewDocumentScreen() {
       formData.append('title', selectedFile.name);
       formData.append('summary_type', summaryType);
 
-      setProcessStep('Gemini đang phân tích luận điểm & tạo đồ thị tri thức...');
-      const res = await api.post('/documents/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+      // Bước 2: Tạo Vector Embedding & Tóm tắt AI (70%)
+      setCurrentStage(2);
+      setProgressPercent(70);
+      setProcessStep('Đang tạo Gemini Vector Embedding & Tóm tắt (70%)...');
+
+      const { sessionToken, user } = useAuthStore.getState();
+      const headers: Record<string, string> = {};
+      if (sessionToken) {
+        headers['Authorization'] = `Bearer ${sessionToken}`;
+      }
+      if (user?.id) {
+        headers['X-User-Id'] = user.id;
+      }
+
+      const uploadUrl = `${api.defaults.baseURL}/documents/upload`;
+      const response = await fetch(uploadUrl, {
+        method: 'POST',
+        headers,
+        body: formData,
       });
 
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData?.detail || `Lỗi máy chủ (${response.status})`);
+      }
+
+      const data = await response.json();
+      const documentId = data.document_id;
+
+      // Hoàn tất 100% (Bỏ qua trích xuất Đồ thị Tri thức theo yêu cầu)
+      setCurrentStage(4);
+      setProgressPercent(100);
+      setProcessStep('Hoàn tất bóc tách & tóm tắt tài liệu (100%)!');
+
+      // Cập nhật bộ nhớ đệm SSOT và làm mới danh sách tài liệu
+      try {
+        const detailRes = await api.get(`/documents/${documentId}`);
+        if (detailRes.data) {
+          await sl.documentLocalDataSource.upsertCachedDocument(
+            DocumentModel.fromJson(detailRes.data)
+          );
+        }
+      } catch {
+        // Ignore cache warm error
+      }
+      await queryClient.invalidateQueries({ queryKey: ['documents'] });
+
+      await wait(500);
       setIsProcessing(false);
-      const documentId = res.data.document_id;
       router.replace(`/document/${documentId}`);
     } catch (err: any) {
       setIsProcessing(false);
-      const errorMsg = err?.response?.data?.detail || err?.message || 'Có lỗi xảy ra khi tải lên tài liệu';
-      Alert.alert('Lỗi xử lý', errorMsg);
+      setCurrentStage(0);
+      const errorMsg = err?.message || 'Có lỗi xảy ra khi tải lên tài liệu';
+      setErrorMessage(errorMsg);
+      if (Platform.OS !== 'web') {
+        Alert.alert('Lỗi xử lý', errorMsg);
+      }
     }
   };
 
@@ -150,41 +235,103 @@ export default function NewDocumentScreen() {
             </Text>
           </TouchableOpacity>
 
-          {/* AI Progress Box */}
-          {isProcessing && (
-            <View className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-4">
-              <View className="flex-row justify-between items-center mb-2">
-                <Text className="text-xs font-bold text-indigo-700 flex-1 mr-2">{processStep}</Text>
-                <ActivityIndicator size="small" color="#4F46E5" />
-              </View>
+          {/* Thông báo lỗi nếu chưa chọn file */}
+          {errorMessage ? (
+            <View className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+              <Text className="text-xs font-semibold text-red-600">{errorMessage}</Text>
+            </View>
+          ) : null}
 
-              <View className="w-full h-1.5 bg-slate-200 rounded-full mb-4 overflow-hidden">
-                <View className="w-[75%] h-full bg-indigo-600 rounded-full" />
-              </View>
-
-              <View className="space-y-2">
-                <View className="flex-row items-center mb-1">
-                  <Text className="text-xs font-semibold text-emerald-600 flex-1">1. PaddleOCR trích xuất chữ</Text>
-                  <CheckCircle2 size={14} color="#059669" />
-                </View>
-                <View className="flex-row items-center mb-1">
-                  <Text className="text-xs font-semibold text-emerald-600 flex-1">2. Gemini Vector Embedding</Text>
-                  <CheckCircle2 size={14} color="#059669" />
-                </View>
-                <View className="flex-row items-center">
-                  <Text className="text-xs font-bold text-indigo-600 flex-1">3. Trích xuất Đồ thị Tri thức (Đang chạy...)</Text>
-                </View>
+          {/* AI Progress Box (Lúc chưa tải file sẽ ở 0%, khi bấm Bắt đầu mới chạy từng bước 0% -> 100%) */}
+          <View className="bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 mb-4">
+            <View className="flex-row justify-between items-center mb-2">
+              <Text className="text-xs font-bold text-indigo-700 flex-1 mr-2">
+                {isProcessing
+                  ? processStep
+                  : selectedFile
+                  ? `Đã chọn: ${selectedFile.name} (Sẵn sàng bóc tách)`
+                  : 'Chưa có tài liệu nào đang xử lý (0%)'}
+              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text className="text-[11px] font-bold text-indigo-600">
+                  {`${progressPercent}%`}
+                </Text>
+                {isProcessing && <ActivityIndicator size="small" color="#4F46E5" />}
               </View>
             </View>
-          )}
 
-          {/* Lock status info */}
-          <View className="flex-row items-center mb-5 px-1">
-            <Lock size={14} color="#64748B" className="mr-2" />
-            <Text className="text-[11px] text-slate-500 leading-tight flex-1">
-              Tạm khóa bắt đầu mới khi đang xử lý. Vui lòng chờ phân tích hoàn tất.
-            </Text>
+            {/* Thanh tiến trình bắt đầu từ 0% */}
+            <View className="w-full h-1.5 bg-slate-200 rounded-full mb-4 overflow-hidden">
+              <View
+                style={{ width: `${progressPercent}%` }}
+                className="h-full bg-indigo-600 rounded-full"
+              />
+            </View>
+
+            <View className="space-y-2">
+              {/* Bước 1 */}
+              <View className="flex-row items-center mb-1">
+                <Text
+                  className={`text-xs flex-1 ${
+                    currentStage > 1
+                      ? 'font-semibold text-emerald-600'
+                      : currentStage === 1
+                      ? 'font-bold text-indigo-600'
+                      : 'font-medium text-slate-400'
+                  }`}
+                >
+                  1. PaddleOCR trích xuất chữ
+                </Text>
+                {currentStage === 1 ? (
+                  <ActivityIndicator size="small" color="#4F46E5" />
+                ) : currentStage > 1 ? (
+                  <CheckCircle2 size={14} color="#059669" />
+                ) : (
+                  <Clock size={14} color="#CBD5E1" />
+                )}
+              </View>
+
+              {/* Bước 2 */}
+              <View className="flex-row items-center mb-1">
+                <Text
+                  className={`text-xs flex-1 ${
+                    currentStage > 2
+                      ? 'font-semibold text-emerald-600'
+                      : currentStage === 2
+                      ? 'font-bold text-indigo-600'
+                      : 'font-medium text-slate-400'
+                  }`}
+                >
+                  2. Gemini Vector Embedding
+                </Text>
+                {currentStage === 2 ? (
+                  <ActivityIndicator size="small" color="#4F46E5" />
+                ) : currentStage > 2 ? (
+                  <CheckCircle2 size={14} color="#059669" />
+                ) : (
+                  <Clock size={14} color="#CBD5E1" />
+                )}
+              </View>
+
+              {/* Bước 3 (Tạm dừng theo yêu cầu để test nhanh các chức năng chính) */}
+              <View className="flex-row items-center">
+                <Text className="text-xs flex-1 font-medium text-slate-400">
+                  3. Trích xuất Đồ thị Tri thức (Đã tạm dừng để test nhanh)
+                </Text>
+                <Clock size={14} color="#CBD5E1" />
+              </View>
+            </View>
           </View>
+
+          {/* Lock status info - chỉ hiện khi đang xử lý */}
+          {isProcessing && (
+            <View className="flex-row items-center mb-5 px-1">
+              <Lock size={14} color="#64748B" className="mr-2" />
+              <Text className="text-[11px] text-slate-500 leading-tight flex-1">
+                Tạm khóa bắt đầu mới khi đang xử lý. Vui lòng chờ phân tích hoàn tất.
+              </Text>
+            </View>
+          )}
 
           {/* Primary Action Button */}
           <TouchableOpacity
@@ -199,9 +346,56 @@ export default function NewDocumentScreen() {
           </TouchableOpacity>
 
           {/* Cancel Button */}
-          <TouchableOpacity onPress={() => router.back()} className="py-2.5 items-center">
+          <TouchableOpacity onPress={() => router.back()} className="py-2.5 items-center mb-3">
             <Text className="text-xs text-slate-500 font-bold">Hủy bỏ</Text>
           </TouchableOpacity>
+
+          {/* Lịch sử tài liệu đã tải lên gần đây */}
+          {uploadedHistory.length > 0 && (
+            <View className="mt-2 pt-4 border-t border-slate-100">
+              <Text className="text-xs font-bold text-slate-700 mb-2.5">
+                Lịch sử tài liệu đã tải lên ({uploadedHistory.length})
+              </Text>
+              {uploadedHistory.slice(0, 5).map((doc) => (
+                <View
+                  key={doc.id}
+                  className="flex-row items-center justify-between bg-slate-50 border border-slate-200/80 rounded-xl p-3 mb-2"
+                >
+                  <TouchableOpacity
+                    onPress={() => router.replace(`/document/${doc.id}`)}
+                    className="flex-row items-center flex-1 mr-2"
+                  >
+                    <View className="p-2 bg-indigo-50 rounded-lg mr-2.5">
+                      <FileText size={16} color="#4F46E5" />
+                    </View>
+                    <View className="flex-1">
+                      <Text className="text-xs font-bold text-slate-800" numberOfLines={1}>
+                        {doc.title}
+                      </Text>
+                      <Text className="text-[10px] text-slate-400 mt-0.5">
+                        {doc.numPages} trang • Đã xử lý hoàn tất
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                  <View className="flex-row items-center gap-2">
+                    <TouchableOpacity
+                      onPress={async () => {
+                        try {
+                          await api.delete(`/documents/${doc.id}`);
+                        } catch {}
+                        await sl.documentLocalDataSource.removeCachedDocument(doc.id);
+                        await queryClient.invalidateQueries({ queryKey: ['documents'] });
+                      }}
+                      className="p-1.5 bg-red-50 rounded-lg border border-red-200"
+                    >
+                      <Trash2 size={14} color="#EF4444" />
+                    </TouchableOpacity>
+                    <ChevronRight size={16} color="#64748B" />
+                  </View>
+                </View>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </View>
     </View>

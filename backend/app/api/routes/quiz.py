@@ -15,10 +15,12 @@ router = APIRouter()
 
 @router.get("/{document_id}", response_model=QuizResponse)
 async def get_quiz(document_id: str, db: AsyncSession = Depends(get_db)):
-    """Retrieve existing quiz questions for a document."""
+    """Retrieve existing quiz questions for a document, or auto-generate if empty."""
     stmt = select(QuizQuestion).where(QuizQuestion.document_id == document_id)
     result = await db.execute(stmt)
-    questions = result.scalars().all()
+    questions = list(result.scalars().all())
+    if not questions:
+        questions = await generate_quiz_for_document(db, document_id, num_questions=5)
     return QuizResponse(document_id=document_id, questions=questions)
 
 
@@ -30,4 +32,3 @@ async def generate_quiz(req: QuizGenerateRequest, db: AsyncSession = Depends(get
         return QuizResponse(document_id=req.document_id, questions=questions)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to generate quiz: {str(e)}")
-

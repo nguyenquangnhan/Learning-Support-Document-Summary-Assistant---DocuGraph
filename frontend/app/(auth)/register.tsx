@@ -16,9 +16,11 @@ import { useRouter } from "expo-router";
 import { ArrowRight, Eye, EyeOff, Info } from "lucide-react-native";
 import AuthHeader from "../../components/auth/AuthHeader";
 import { supabase } from "../../lib/supabase";
+import { useAuthStore } from "../../stores/authStore";
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const { setUser, setSessionToken } = useAuthStore();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,6 +29,7 @@ export default function RegisterScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
   const handleRegister = async () => {
     if (!fullName.trim() || !email.trim() || !password) {
@@ -61,12 +64,16 @@ export default function RegisterScreen() {
       }
 
       if (data.session) {
+        setUser({
+          id: data.session.user.id,
+          email: data.session.user.email || "",
+          full_name: fullName.trim(),
+        });
+        setSessionToken(data.session.access_token);
         router.replace("/(tabs)");
       } else {
-        Alert.alert(
-          "Đăng ký thành công!",
-          "Vui lòng kiểm tra hộp thư email của bạn để xác thực tài khoản.",
-          [{ text: "Đăng nhập ngay", onPress: () => router.push("/(auth)/login") }]
+        setSuccessMessage(
+          "Đăng ký thành công trên Supabase! Vui lòng kiểm tra email để xác thực hoặc bấm Đăng nhập bên dưới."
         );
       }
     } catch (err: any) {
@@ -198,6 +205,13 @@ export default function RegisterScreen() {
               {errorMessage ? (
                 <View style={{ backgroundColor: "#FEF2F2", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#FCA5A5" }}>
                   <Text style={{ color: "#DC2626", fontSize: 12, fontWeight: "500" }}>{errorMessage}</Text>
+                </View>
+              ) : null}
+
+              {/* Thông báo thành công */}
+              {successMessage ? (
+                <View style={{ backgroundColor: "#ECFDF5", padding: 10, borderRadius: 10, marginBottom: 12, borderWidth: 1, borderColor: "#6EE7B7" }}>
+                  <Text style={{ color: "#047857", fontSize: 12, fontWeight: "600" }}>{successMessage}</Text>
                 </View>
               ) : null}
 

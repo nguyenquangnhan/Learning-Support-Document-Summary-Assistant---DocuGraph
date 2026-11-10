@@ -4,6 +4,7 @@ import { ArrowLeft, Plus, Minus, Maximize2, Sparkles, X, BookOpen } from 'lucide
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../lib/api';
+import { sl } from '../../src/core/di/injection_container';
 import { GraphCanvas } from '../../components/graph/GraphCanvas';
 
 export default function GraphScreen() {
@@ -15,28 +16,27 @@ export default function GraphScreen() {
   const { data: graphData, isLoading } = useQuery({
     queryKey: ['graph', documentId],
     queryFn: async () => {
-      if (documentId) {
+      let targetDocId = documentId;
+      if (!targetDocId) {
+        const docsEither = await sl.getDocumentsUseCase.call();
+        docsEither.fold(
+          () => {},
+          (docs) => {
+            if (docs.length > 0) targetDocId = docs[0].id;
+          }
+        );
+      }
+
+      if (targetDocId) {
         try {
-          const res = await api.get(`/graph/${documentId}`);
-          if (res.data && res.data.nodes && res.data.nodes.length > 0) {
+          const res = await api.get(`/graph/${targetDocId}`);
+          if (res.data && res.data.nodes) {
             return res.data;
           }
         } catch {}
       }
-      // Fallback sample graph
-      return {
-        nodes: [
-          { id: 'n1', label: 'Tiến trình (Process)', type: 'Concept', definition: 'Một chương trình đang trong quá trình thực thi trên hệ điều hành.', page_number: 12 },
-          { id: 'n2', label: 'Tài nguyên (Resource)', type: 'Concept', definition: 'CPU, bộ nhớ, thiết bị I/O được cấp phát cho tiến trình.', page_number: 14 },
-          { id: 'n3', label: 'Luồng (Thread)', type: 'Concept', definition: 'Đơn vị xử lý cơ bản nhất bên trong một tiến trình.', page_number: 22 },
-          { id: 'n4', label: 'Deadlock (Khóa chết)', type: 'Theorem', definition: 'Trạng thái tập hợp tiến trình chờ đợi lẫn nhau vô hạn.', page_number: 38 },
-        ],
-        edges: [
-          { id: 'e1', source: 'n1', target: 'n2', label: 'yêu_cầu' },
-          { id: 'e2', source: 'n1', target: 'n3', label: 'chứa' },
-          { id: 'e3', source: 'n1', target: 'n4', label: 'dẫn_tới' },
-        ],
-      };
+
+      return { nodes: [], edges: [] };
     },
   });
 
@@ -80,6 +80,16 @@ export default function GraphScreen() {
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#6366F1" />
             <Text className="text-slate-400 text-xs mt-2">Đang dựng đồ thị tri thức...</Text>
+          </View>
+        ) : nodes.length === 0 ? (
+          <View className="flex-1 items-center justify-center px-8">
+            <BookOpen size={36} color="#6366F1" />
+            <Text className="text-white font-bold text-base mt-3 text-center">
+              Chưa có tài liệu để dựng Sơ đồ Tri thức
+            </Text>
+            <Text className="text-slate-400 text-xs text-center mt-1.5 leading-5">
+              Hãy tải lên giáo trình hoặc quét tài liệu ở tab Tài liệu để AI trích xuất các khái niệm và mối liên hệ.
+            </Text>
           </View>
         ) : (
           <>

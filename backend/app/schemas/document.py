@@ -25,6 +25,16 @@ class DocumentUploadResponse(BaseModel):
     message: str
 
 
+class OcrDocumentCreateRequest(BaseModel):
+    title: str
+    extracted_text: str
+    confidence: float = 0.95
+    latency_ms: float = 18.5
+    device_engine: str = "ML Kit Text Recognition v2"
+    num_pages: int = 1
+    client_updated_at: str | None = None
+
+
 class DocumentChunkResponse(BaseModel):
     id: str
     chunk_index: int
@@ -33,4 +43,3 @@ class DocumentChunkResponse(BaseModel):
 
     class Config:
         from_attributes = True
-

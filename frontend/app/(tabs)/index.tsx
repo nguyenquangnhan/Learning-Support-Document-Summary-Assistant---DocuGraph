@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -11,19 +12,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   CheckCircle2,
   FileText,
   GitFork,
   HardDrive,
   ListTree,
-  MoreVertical,
   Plus,
   Search,
   SlidersHorizontal,
+  Trash2,
 } from "lucide-react-native";
 import { api } from "../../lib/api";
+import { sl } from "../../src/core/di/injection_container";
 import { useAuthStore } from "../../stores/authStore";
 import type { DocumentItem } from "../../stores/documentStore";
 
@@ -38,46 +40,66 @@ const filterTabs: { id: FilterType; label: string }[] = [
 
 export default function HomeScreen() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
   const displayName = user?.full_name?.trim() || "Minh";
 
   const [searchQuery, setSearchQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<FilterType>("all");
+  const [isOfflineDemo, setIsOfflineDemo] = useState(sl.networkInfo.isSimulatedOffline());
+  const [docToDelete, setDocToDelete] = useState<DocumentItem | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!docToDelete || isDeleting) return;
+    setIsDeleting(true);
+    try {
+      try {
+        await api.delete(`/documents/${docToDelete.id}`);
+      } catch {
+        // Also allow deleting offline-only cached documents
+      }
+      await sl.documentLocalDataSource.removeCachedDocument(docToDelete.id);
+      await queryClient.invalidateQueries({ queryKey: ["documents"] });
+      setDocToDelete(null);
+      refetch();
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const {
     data: documents = [],
     isLoading,
-    isError,
     refetch,
   } = useQuery<DocumentItem[]>({
-    queryKey: ["documents"],
+    queryKey: ["documents", user?.id || "guest", isOfflineDemo],
     queryFn: async () => {
-      try {
-        const response = await api.get("/documents");
-        return response.data;
-      } catch {
-        // Mock fallback đúng theo ảnh mẫu nếu chưa kết nối backend
-        return [
-          {
-            id: "1",
-            title: "He_Dieu_Hanh_Chuong_4.pdf",
-            file_type: "PDF",
-            num_pages: 45,
-            status: "ready",
-            created_at: new Date().toISOString(),
-          },
-          {
-            id: "2",
-            title: "Co_So_Du_Lieu_Phan_Tan.docx",
-            file_type: "DOCX",
-            num_pages: 12,
-            status: "ready",
-            created_at: new Date().toISOString(),
-          },
-        ];
-      }
+      const resultEither = await sl.getDocumentsUseCase.call();
+      return resultEither.fold(
+        () => [],
+        (entities) =>
+          entities.map((e) => ({
+            id: e.id,
+            title: e.title,
+            file_type: e.fileType,
+            file_size: e.fileSize,
+            num_pages: e.numPages,
+            status: e.status,
+            summary_tldr: e.summaryTldr,
+            summary_detailed: e.summaryDetailed,
+            created_at: e.createdAt,
+          }))
+      );
     },
   });
+
+  const handleToggleOfflineMode = () => {
+    const nextOffline = !isOfflineDemo;
+    sl.networkInfo.setSimulatedOffline(nextOffline);
+    setIsOfflineDemo(nextOffline);
+    refetch();
+  };
 
   const filteredDocs = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -104,10 +126,19 @@ export default function HomeScreen() {
           <View>
             <Text style={styles.brandTitle}>DocuGraph AI</Text>
             <Text style={styles.greetingTitle}>Xin chào, {displayName} 👋</Text>
-            <View style={styles.statusRow}>
-              <View style={styles.onlineDot} />
-              <Text style={styles.statusText}>Đang trực tuyến</Text>
-            </View>
+            <Pressable onPress={handleToggleOfflineMode} style={styles.statusRow}>
+              <View
+                style={[
+                  styles.onlineDot,
+                  isOfflineDemo && { backgroundColor: "#F59E0B" },
+                ]}
+              />
+              <Text style={styles.statusText}>
+                {isOfflineDemo
+                  ? "Chế độ Ngoại tuyến (Offline Cache SSOT)"
+                  : "Đang trực tuyến · Clean Arch SSOT"}
+              </Text>
+            </Pressable>
           </View>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>
@@ -135,10 +166,17 @@ export default function HomeScreen() {
         <View style={styles.storageCard}>
           <View style={styles.storageHeader}>
             <HardDrive size={16} color="#1D44B8" />
-            <Text style={styles.storageText}>Bộ nhớ ngoại tuyến: 1.2 GB / 2.0 GB</Text>
+            <Text style={styles.storageText}>
+              Bộ nhớ ngoại tuyến: {(documents.length * 1.4).toFixed(1)} MB / 2.0 GB
+            </Text>
           </View>
           <View style={styles.progressBarTrack}>
-            <View style={styles.progressBarFill} />
+            <View
+              style={[
+                styles.progressBarFill,
+                { width: `${Math.min(100, documents.length * 5)}%` },
+              ]}
+            />
           </View>
         </View>
 
@@ -182,6 +220,76 @@ export default function HomeScreen() {
         {/* 6. Danh sách thẻ tài liệu (Document Cards) */}
         {isLoading ? (
           <ActivityIndicator size="small" color="#1D44B8" style={{ marginTop: 24 }} />
+        ) : filteredDocs.length === 0 ? (
+          <View
+            style={{
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+              padding: 28,
+              alignItems: "center",
+              marginTop: 8,
+            }}
+          >
+            <View
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 28,
+                backgroundColor: "#EFF6FF",
+                alignItems: "center",
+                justifyContent: "center",
+                marginBottom: 12,
+              }}
+            >
+              <FileText size={26} color="#1D44B8" />
+            </View>
+            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginBottom: 6 }}>
+              Chưa có tài liệu nào
+            </Text>
+            <Text
+              style={{
+                fontSize: 12,
+                color: "#64748B",
+                textAlign: "center",
+                lineHeight: 18,
+                marginBottom: 16,
+              }}
+            >
+              Tài khoản của bạn hiện đang trống. Hãy tải lên giáo trình PDF/DOCX hoặc quét tài liệu bằng On-Device ML Kit OCR để bắt đầu!
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => router.push("/document/scan")}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  backgroundColor: "#EFF6FF",
+                  borderWidth: 1,
+                  borderColor: "#BFDBFE",
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D44B8" }}>
+                  Quét OCR (ML Kit)
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push("/document/new")}
+                style={{
+                  paddingHorizontal: 14,
+                  paddingVertical: 10,
+                  borderRadius: 10,
+                  backgroundColor: "#1D44B8",
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
+                  + Tải lên tài liệu
+                </Text>
+              </Pressable>
+            </View>
+          </View>
         ) : (
           <View style={{ gap: 14 }}>
             {filteredDocs.map((doc, idx) => {
@@ -212,8 +320,21 @@ export default function HomeScreen() {
                       </Text>
                     </View>
 
-                    <Pressable hitSlop={10}>
-                      <MoreVertical size={18} color="#94A3B8" />
+                    <Pressable
+                      onPress={(e) => {
+                        e.stopPropagation?.();
+                        setDocToDelete(doc);
+                      }}
+                      hitSlop={12}
+                      style={{
+                        padding: 8,
+                        borderRadius: 10,
+                        backgroundColor: "#FEF2F2",
+                        borderWidth: 1,
+                        borderColor: "#FECACA",
+                      }}
+                    >
+                      <Trash2 size={16} color="#EF4444" />
                     </Pressable>
                   </View>
 
@@ -259,6 +380,82 @@ export default function HomeScreen() {
           <Plus size={24} color="#FFFFFF" strokeWidth={2.4} />
         </Pressable>
       </View>
+
+      {/* Modal Xác nhận Xóa Tài liệu */}
+      <Modal
+        visible={Boolean(docToDelete)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setDocToDelete(null)}
+      >
+        <View
+          style={{
+            flex: 1,
+            backgroundColor: "rgba(15, 23, 42, 0.55)",
+            justifyContent: "center",
+            alignItems: "center",
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              backgroundColor: "#FFFFFF",
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: "#E2E8F0",
+            }}
+          >
+            <Text style={{ fontSize: 16, fontWeight: "700", color: "#0F172A", marginBottom: 8 }}>
+              Xóa tài liệu khỏi Tủ sách?
+            </Text>
+            <Text style={{ fontSize: 12, color: "#64748B", lineHeight: 18, marginBottom: 18 }}>
+              Bạn có chắc chắn muốn xóa tài liệu{" "}
+              <Text style={{ fontWeight: "700", color: "#0F172A" }}>
+                "{docToDelete?.title}"
+              </Text>{" "}
+              khỏi Tủ sách và bộ nhớ ngoại tuyến không?
+            </Text>
+            <View style={{ flexDirection: "row", gap: 10 }}>
+              <Pressable
+                onPress={() => setDocToDelete(null)}
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: 10,
+                  backgroundColor: "#F1F5F9",
+                  alignItems: "center",
+                }}
+              >
+                <Text style={{ fontSize: 12, fontWeight: "700", color: "#475569" }}>
+                  Hủy bỏ
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={handleConfirmDelete}
+                disabled={isDeleting}
+                style={{
+                  flex: 1,
+                  paddingVertical: 11,
+                  borderRadius: 10,
+                  backgroundColor: "#EF4444",
+                  alignItems: "center",
+                }}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color="#FFFFFF" />
+                ) : (
+                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
+                    Xóa ngay
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }

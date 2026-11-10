@@ -1,0 +1,28 @@
+# DocuGraph AI – Maestro Declarative E2E Automation Flow
+# Course Alignment: Week 9 Slide 42 (Part 8: End-to-End Testing with Maestro)
+appId: com.vku.docugraph
+---
+- launchApp:
+    clearState: true
+
+# 1. Assert Dashboard & Clean Architecture SSOT Status
+- assertVisible: "DocuGraph AI"
+- assertVisible: "Đang trực tuyến · Clean Arch SSOT"
+
+# 2. Trigger On-Device ML Kit OCR Scanner Flow
+- tapOn: "Thêm tài liệu"
+- tapOn: "Chụp ảnh OCR Camera"
+- tapOn: "Quét Mẫu"
+
+# 3. Verify Human-in-the-Loop Review Modal Sheet (Week 11 Deliverable)
+- assertVisible: "Xác nhận Kết quả OCR (Human-in-the-Loop)"
+- assertVisible: "⚡ Latency:"
+- tapOn: "✓ Xác nhận & Lưu vào Bộ nhớ (Offline-First Sync)"
+
+# 4. Assert Document Summary & Navigate to GraphRAG Chat
+- assertVisible: "Tóm tắt chi tiết"
+- tapOn: "Hỏi đáp AI"
+- assertVisible: "NGỮ CẢNH TÀI LIỆU GRAPHRAG ĐANG CHỌN:"
+- tapOn: "Tóm tắt các khái niệm trọng tâm ở Trang 1?"
+- takeScreenshot: "docugraph_e2e_verified"
+
