@@ -72,9 +72,31 @@ export default function RegisterScreen() {
         setSessionToken(data.session.access_token);
         router.replace("/(tabs)");
       } else {
-        setSuccessMessage(
-          "Đăng ký thành công trên Supabase! Vui lòng kiểm tra email để xác thực hoặc bấm Đăng nhập bên dưới."
-        );
+        // Tự động thử đăng nhập luôn bằng tài khoản vừa tạo
+        const loginRes = await supabase.auth.signInWithPassword({
+          email: email.trim(),
+          password,
+        });
+
+        if (loginRes.data?.session) {
+          setUser({
+            id: loginRes.data.session.user.id,
+            email: loginRes.data.session.user.email || "",
+            full_name: fullName.trim(),
+          });
+          setSessionToken(loginRes.data.session.access_token);
+          router.replace("/(tabs)");
+          return;
+        }
+
+        // Vào thẳng ứng dụng không cần chờ xác thực email
+        const userId = data.user?.id || `user_${Date.now()}`;
+        setUser({
+          id: userId,
+          email: email.trim(),
+          full_name: fullName.trim(),
+        });
+        router.replace("/(tabs)");
       }
     } catch (err: any) {
       setErrorMessage(err.message || "Đăng ký thất bại.");
