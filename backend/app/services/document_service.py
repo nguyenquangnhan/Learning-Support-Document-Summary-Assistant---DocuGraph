@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.document import Document, DocumentChunk
 from app.services.gemini_service import embed_batch, generate_json, get_client
 from app.core.config import settings
-from app.services.graph_service import save_graph_to_neo4j
+from app.services.graph_service import save_graph_to_neo4j, build_mindmap_and_graph_for_document
 
 logger = logging.getLogger(__name__)
 
@@ -244,44 +244,11 @@ Nội dung:
             doc.summary_tldr = clean_text[:400] or f"Tóm tắt tài liệu {doc.title}"
             doc.summary_detailed = clean_text[:1500] or f"Chi tiết nội dung tài liệu {doc.title}"
 
-    # Tạm dừng gọi LLM trích xuất Đồ thị Tri thức theo yêu cầu để tăng tốc upload & test tính năng chính
-    sentences = [s.strip() for s in re.split(r"[.\n!?]+", clean_text) if len(s.strip()) > 15]
-    words = re.findall(r"\b[A-ZÀ-Ỹ][a-zà-ỹA-Z0-9_-]{2,}(?:\s+[A-ZÀ-Ỹa-zà-ỹ0-9_-]{2,}){0,2}\b", clean_text)
-    stop_words = {"Trang", "Chương", "Phần", "Mục", "Bài", "Trong", "Theo", "Nhưng", "Hoặc", "Nếu", "Khi"}
-    unique_concepts = [w for w in dict.fromkeys(words) if w not in stop_words][:8]
-    if len(unique_concepts) < 3:
-        unique_concepts = ["Khái niệm Trọng tâm", "Cơ sở Lý thuyết", "Mô hình Thuật toán", "Ứng dụng Thực tiễn"]
-
-    fallback_nodes = []
-    for i, concept in enumerate(unique_concepts):
-        matching_sent = next((s for s in sentences if concept.lower() in s.lower()), None)
-        definition = matching_sent[:160] if matching_sent else f"Khái niệm học thuật trọng tâm trong {doc.title}"
-        page_no = (i // 2) + 1
-        fallback_nodes.append({
-            "id": f"node_{i}",
-            "name": concept[:42],
-            "type": "Concept" if i % 2 == 0 else "Theorem",
-            "definition": definition,
-            "formula": "",
-            "page_number": min(page_no, max(1, doc.num_pages)),
-        })
-
-    fallback_edges = []
-    for i in range(len(fallback_nodes) - 1):
-        fallback_edges.append({
-            "source": f"node_{i}",
-            "target": f"node_{i + 1}",
-            "label": "relates_to" if i % 2 == 0 else "prerequisite_of",
-            "confidence": round(0.92 - (i * 0.02), 2),
-        })
-    if len(fallback_nodes) >= 4:
-        fallback_edges.append({
-            "source": "node_0",
-            "target": "node_2",
-            "label": "derives",
-            "confidence": 0.88,
-        })
-    await save_graph_to_neo4j(doc.id, fallback_nodes, fallback_edges)
+    # Trích xuất Sơ đồ Tư duy Mindmap & Đồ thị Tri thức lưu vào Neo4j
+    try:
+        await build_mindmap_and_graph_for_document(doc.id, doc.title, clean_text)
+    except Exception as e:
+        logger.warning(f"Neo4j build_mindmap_and_graph failed: {e}")
 
     doc.status = "ready"
     await db.commit()
