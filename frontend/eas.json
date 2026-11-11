@@ -12,6 +12,12 @@
       "distribution": "internal",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://learning-support-document-summary.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://wfibadajisvzpyezkraw.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_KEY": "sb_publishable_vAtN1SySYpLS7R4xkXgK8Q_4dNqiPvm",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_vAtN1SySYpLS7R4xkXgK8Q_4dNqiPvm"
       }
     },
     "production": {

@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator, Alert, Pla
 import { useRouter } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { X, UploadCloud, CheckCircle2, Lock, Clock, FileText, ChevronRight, Trash2 } from 'lucide-react-native';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
@@ -81,23 +82,6 @@ export default function NewDocumentScreen() {
       setProcessStep('Đang trích xuất văn bản bằng OCR (35%)...');
       await wait(600);
 
-      const formData = new FormData();
-      if (Platform.OS === 'web' && (selectedFile as any).file) {
-        formData.append('file', (selectedFile as any).file);
-      } else if (Platform.OS === 'web') {
-        const resp = await fetch(selectedFile.uri);
-        const blob = await resp.blob();
-        formData.append('file', blob, selectedFile.name);
-      } else {
-        formData.append('file', {
-          uri: selectedFile.uri,
-          name: selectedFile.name,
-          type: selectedFile.mimeType || 'application/pdf',
-        } as any);
-      }
-      formData.append('title', selectedFile.name);
-      formData.append('summary_type', summaryType);
-
       // Bước 2: Tạo Vector Embedding & Tóm tắt AI (70%)
       setCurrentStage(2);
       setProgressPercent(70);
@@ -113,18 +97,64 @@ export default function NewDocumentScreen() {
       }
 
       const uploadUrl = `${api.defaults.baseURL}/documents/upload`;
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
+      let data: any;
 
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData?.detail || `Lỗi máy chủ (${response.status})`);
+      if (Platform.OS === 'web') {
+        const formData = new FormData();
+        if ((selectedFile as any).file) {
+          formData.append('file', (selectedFile as any).file);
+        } else {
+          const resp = await fetch(selectedFile.uri);
+          const blob = await resp.blob();
+          formData.append('file', blob, selectedFile.name);
+        }
+        formData.append('title', selectedFile.name);
+        formData.append('summary_type', summaryType);
+
+        const response = await fetch(uploadUrl, {
+          method: 'POST',
+          headers,
+          body: formData,
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData?.detail || `Lỗi máy chủ (${response.status})`);
+        }
+        data = await response.json();
+      } else {
+        // Native Mobile: Dùng FileSystem.uploadAsync để stream native và xử lý chuẩn content:// trên Android
+        const mimeType =
+          selectedFile.mimeType ||
+          (selectedFile.name.endsWith('.docx')
+            ? 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            : selectedFile.name.endsWith('.txt')
+            ? 'text/plain'
+            : 'application/pdf');
+
+        const uploadResult = await FileSystem.uploadAsync(uploadUrl, selectedFile.uri, {
+          httpMethod: 'POST',
+          uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+          fieldName: 'file',
+          mimeType,
+          parameters: {
+            title: selectedFile.name,
+            summary_type: summaryType,
+          },
+          headers,
+        });
+
+        if (uploadResult.status < 200 || uploadResult.status >= 300) {
+          let detail = `Lỗi máy chủ (${uploadResult.status})`;
+          try {
+            const parsed = JSON.parse(uploadResult.body);
+            if (parsed.detail) detail = parsed.detail;
+          } catch {}
+          throw new Error(detail);
+        }
+
+        data = JSON.parse(uploadResult.body);
       }
-
-      const data = await response.json();
       const documentId = data.document_id;
 
       // Hoàn tất 100% (Bỏ qua trích xuất Đồ thị Tri thức theo yêu cầu)
