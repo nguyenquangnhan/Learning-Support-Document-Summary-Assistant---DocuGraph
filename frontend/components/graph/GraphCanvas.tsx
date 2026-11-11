@@ -1,5 +1,5 @@
-import React, { useRef } from "react";
-import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Text } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { View, StyleSheet, ActivityIndicator, TouchableOpacity, Platform } from "react-native";
 import { WebView } from "react-native-webview";
 import { ZoomIn, ZoomOut, Maximize2 } from "lucide-react-native";
 
@@ -37,6 +37,31 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
   onNodeSelect,
 }) => {
   const webViewRef = useRef<WebView>(null);
+  const iframeRef = useRef<any>(null);
+  const isWeb = Platform.OS === "web";
+
+  const handleCanvasMessage = (raw: any) => {
+    try {
+      const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+      if (!parsed || parsed.source !== "docugraph-canvas") return;
+      if (parsed.type === "NODE_SELECTED" && onNodeSelect) {
+        onNodeSelect(parsed.data);
+      } else if (parsed.type === "DESELECT" && onNodeSelect) {
+        onNodeSelect(null as any);
+      }
+    } catch (e) {}
+  };
+
+  // Web: lắng nghe postMessage từ iframe
+  useEffect(() => {
+    if (!isWeb || typeof window === "undefined") return;
+    const listener = (event: MessageEvent) => {
+      if (iframeRef.current && event.source !== iframeRef.current.contentWindow) return;
+      handleCanvasMessage(event.data);
+    };
+    window.addEventListener("message", listener);
+    return () => window.removeEventListener("message", listener);
+  }, [isWeb, onNodeSelect]);
 
   const elements = [
     ...nodes.map((n) => ({
@@ -79,7 +104,7 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
         <div id="cy"></div>
         <script>
           const isMindmap = ${isMindmap ? "true" : "false"};
-          const elements = ${JSON.stringify(elements)};
+          const elements = ${JSON.stringify(elements).replace(/<\/script>/gi, "<\\/script>")};
 
           const styles = [
             {
@@ -246,21 +271,26 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
             }, 100);
           });
 
+          // Gửi message cho cả Native WebView và Web iframe
+          function sendToHost(payload) {
+            payload.source = 'docugraph-canvas';
+            const msg = JSON.stringify(payload);
+            if (window.ReactNativeWebView && window.ReactNativeWebView.postMessage) {
+              window.ReactNativeWebView.postMessage(msg);
+            } else if (window.parent && window.parent !== window) {
+              window.parent.postMessage(msg, '*');
+            }
+          }
+
           // Node tap listener
           cy.on('tap', 'node', function(evt) {
-            const node = evt.target;
-            window.ReactNativeWebView.postMessage(JSON.stringify({
-              type: 'NODE_SELECTED',
-              data: node.data()
-            }));
+            sendToHost({ type: 'NODE_SELECTED', data: evt.target.data() });
           });
 
           // Background tap (deselect)
           cy.on('tap', function(evt) {
             if (evt.target === cy) {
-              window.ReactNativeWebView.postMessage(JSON.stringify({
-                type: 'DESELECT'
-              }));
+              sendToHost({ type: 'DESELECT' });
             }
           });
 
@@ -279,37 +309,39 @@ export const GraphCanvas: React.FC<GraphCanvasProps> = ({
     </html>
   `;
 
-  const handleZoomIn = () => {
-    webViewRef.current?.injectJavaScript("window.zoomIn(); true;");
+  const runCanvasCommand = (fn: "zoomIn" | "zoomOut" | "fitGraph") => {
+    if (isWeb) {
+      try {
+        iframeRef.current?.contentWindow?.[fn]?.();
+      } catch (e) {}
+    } else {
+      webViewRef.current?.injectJavaScript(`window.${fn}(); true;`);
+    }
   };
 
-  const handleZoomOut = () => {
-    webViewRef.current?.injectJavaScript("window.zoomOut(); true;");
-  };
-
-  const handleFit = () => {
-    webViewRef.current?.injectJavaScript("window.fitGraph(); true;");
-  };
+  const handleZoomIn = () => runCanvasCommand("zoomIn");
+  const handleZoomOut = () => runCanvasCommand("zoomOut");
+  const handleFit = () => runCanvasCommand("fitGraph");
 
   return (
     <View style={styles.container}>
-      <WebView
-        ref={webViewRef}
-        originWhitelist={["*"]}
-        source={{ html: htmlContent }}
-        onMessage={(event) => {
-          try {
-            const parsed = JSON.parse(event.nativeEvent.data);
-            if (parsed.type === "NODE_SELECTED" && onNodeSelect) {
-              onNodeSelect(parsed.data);
-            } else if (parsed.type === "DESELECT" && onNodeSelect) {
-              onNodeSelect(null as any);
-            }
-          } catch (e) {}
-        }}
-        renderLoading={() => <ActivityIndicator size="large" color="#6366F1" style={styles.loader} />}
-        startInLoadingState
-      />
+      {isWeb ? (
+        React.createElement("iframe", {
+          ref: iframeRef,
+          srcDoc: htmlContent,
+          title: "DocuGraph Knowledge Canvas",
+          style: { border: "none", width: "100%", height: "100%", minHeight: "100%", backgroundColor: "#0B0F19", display: "block" },
+        })
+      ) : (
+        <WebView
+          ref={webViewRef}
+          originWhitelist={["*"]}
+          source={{ html: htmlContent }}
+          onMessage={(event) => handleCanvasMessage(event.nativeEvent.data)}
+          renderLoading={() => <ActivityIndicator size="large" color="#6366F1" style={styles.loader} />}
+          startInLoadingState
+        />
+      )}
 
       {/* Floating Canvas Controls (Zoom In, Zoom Out, Fit) */}
       <View style={styles.controlsContainer}>
