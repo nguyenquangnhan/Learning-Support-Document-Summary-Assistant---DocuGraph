@@ -21,6 +21,7 @@ frontend/android/
 frontend/ios/
 
 # ── Root ──────────────────────────────────────────────────────────────
+tools/*.exe
 node_modules/
 .DS_Store
 *.log
