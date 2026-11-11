@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "DocuGraph AI",
-    "slug": "docugraph-ai",
+    "slug": "docugraph-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -36,6 +36,11 @@
     ],
     "experiments": {
       "typedRoutes": true
+    },
+    "extra": {
+      "eas": {
+        "projectId": "efa6ce82-d887-4a0f-93fd-3db3a0b9ff44"
+      }
     }
   }
 }
