@@ -2,7 +2,7 @@
 
 **Course:** Cross-Platform Mobile App Development  
 **Project Title:** DocuGraph AI – Trợ lý Học tập Thông minh & Tóm tắt Tài liệu Đa tầng (Multi-layer Knowledge Assistant & Smart Learning Platform)  
-**Team Name:** DocuGraph Team (Nguyễn Quang Nhân) • **Academic Term:** Semester 1 (2026 - 2027) • **Deadline:** Week 4  
+**Team Name:** DocuGraph Team (Nguyễn Quang Nhân, Văn Thị Phước My, Trần Thị Thu Trang) • **Academic Term:** Semester 1 (2026 - 2027) • **Deadline:** Week 4  
 
 ---
 

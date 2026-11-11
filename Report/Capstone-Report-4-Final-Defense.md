@@ -2,7 +2,7 @@
 
 **Capstone Project:** Cross-Platform Mobile App Development  
 **Official Project Title:** DocuGraph AI – Trợ lý Học tập Thông minh & Tóm tắt Tài liệu Đa tầng (Multi-layer Knowledge Assistant & Smart Learning Platform)  
-**Student Team:** DocuGraph Team (Nguyễn Quang Nhân) • **Academic Term:** Semester 1 (2026 - 2027) • **Deadline:** Week 13  
+**Student Team:** DocuGraph Team (Nguyễn Quang Nhân, Văn Thị Phước My, Trần Thị Thu Trang) • **Academic Term:** Semester 1 (2026 - 2027) • **Deadline:** Week 13  
 
 ---
 

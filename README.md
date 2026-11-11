@@ -386,7 +386,7 @@ Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến
 
 ## 👤 11. Thông tin Tác giả & Đồ án
 
-* **Sinh viên thực hiện:** Nguyễn Quang Nhân
+* **Sinh viên thực hiện:** Nguyễn Quang Nhân, Văn Thị Phước My, Trần Thị Thu Trang 
 * **Đề tài:** DocuGraph AI – Trợ lý Học tập Thông minh & Tóm tắt Tài liệu Đa tầng
 * **Học phần:** Phát triển Ứng dụng Di động Đa nền tảng (Cross-Platform Mobile App Development)
 * **Đơn vị:** Trường Đại học Công nghệ Thông tin và Truyền thông Việt - Hàn (VKU) – Đại học Đà Nẵng
