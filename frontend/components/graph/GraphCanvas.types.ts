@@ -24,3 +24,4 @@ export interface GraphCanvasProps {
   mode?: "mindmap" | "graph";
   onNodeSelect?: (node: CanvasNode) => void;
 }
+

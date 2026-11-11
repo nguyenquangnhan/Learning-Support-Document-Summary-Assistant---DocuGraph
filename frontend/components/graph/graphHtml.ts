@@ -222,3 +222,4 @@ export function generateGraphHtml(elements: any[], isMindmap: boolean): string {
     </html>
   `;
 }
+
