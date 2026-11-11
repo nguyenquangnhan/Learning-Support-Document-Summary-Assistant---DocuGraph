@@ -184,7 +184,7 @@ export default function RegisterScreen() {
                 <View style={styles.passwordHint}>
                   <Info size={12} color="#71819B" />
                   <Text style={styles.passwordHintText}>
-                    Ít nhất 8 ký tự, có chữ hoa và chữ số.
+                    Tối thiểu 6 ký tự dễ nhớ để đăng nhập nhanh.
                   </Text>
                 </View>
               </View>
