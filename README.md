@@ -188,7 +188,113 @@ Lệnh trên sẽ tự động khởi động đồng thời cả Backend (port 
 
 ---
 
-## 🎮 6. Hướng dẫn Trải nghiệm Tính năng Đấu trí Realtime (Quiz Battle)
+## 📖 6. Hướng dẫn Sử dụng Chi tiết Các Tính năng (User Manual & Feature Walkthrough)
+
+Dưới đây là cẩm nang hướng dẫn sử dụng chi tiết từng phân hệ chức năng dành cho sinh viên và người học:
+
+### 6.1. Đăng nhập & Quản lý Tài khoản (Authentication)
+* **Đăng nhập:** Mở ứng dụng, chọn **"Đăng nhập với Google"** hoặc nhập Email và Mật khẩu cá nhân.
+* **Duy trì phiên:** Hệ thống sử dụng `Expo SecureStore` và `MMKV` để lưu trữ token đã mã hóa, giúp bạn tự động đăng nhập lại ở các lần mở app tiếp theo mà không cần nhập lại mật khẩu.
+* **Đăng xuất / Chuyển tài khoản:** Truy cập biểu tượng Hồ sơ cá nhân tại góc trên cùng bên phải để đăng xuất an toàn.
+
+---
+
+### 6.2. Quét & Tải Tài liệu Học tập lên Hệ thống (Document Ingestion & OCR)
+Có 2 phương thức tải tài liệu vào hệ thống:
+1. **Tải tệp PDF / DOCX:**
+   * Tại màn hình chính (Home) hoặc Tủ sách, nhấn nút **"Tải tài liệu mới"** (biểu tượng đám mây tải lên).
+   * Chọn tệp giáo trình, slide bài giảng hoặc bài tập lớn từ bộ nhớ thiết bị.
+2. **Quét bằng Camera điện thoại (On-Device ML Kit OCR):**
+   * Nhấn nút biểu tượng **Camera** để mở trình quét tài liệu trực tiếp.
+   * Hướng camera vào trang sách hoặc tài liệu giấy. Công nghệ **Google ML Kit** chạy trực tiếp trên thiết bị (On-Device) sẽ bóc tách tức thời các khối văn bản thô.
+   * Bộ lọc thông minh **Frame Throttler (2.5 FPS / 400ms)** và **Heuristic Regex Parser** tự động bóc tách Tiêu đề bài học, công thức toán học và ngày tháng.
+3. **Cấu hình Xử lý AI:**
+   * Chọn chế độ tóm tắt mong muốn:
+     * *Executive Summary (TL;DR):* Tóm tắt siêu ngắn gọn các ý chính yếu nhất.
+     * *Detailed Summary & Key Takeaways:* Tóm tắt chuyên sâu có phân mục theo từng chương, trích xuất công thức và bảng thuật ngữ.
+   * Nhấn **"Bắt đầu xử lý AI"**. Hệ thống sẽ tiến hành OCR, Vector hóa (pgvector), trích xuất Đồ thị Tri thức (Neo4j) và sinh bộ câu hỏi trắc nghiệm tự động.
+
+---
+
+### 6.3. Đọc Tóm tắt & Tương tác Đồ thị Tri thức (Smart Reader & Concept Graph)
+* **Đọc Tóm tắt Phân cấp:**
+  * Mở tài liệu bất kỳ từ Tủ sách để vào trình đọc thông minh.
+  * Nội dung được trình bày chuẩn Markdown với tiêu đề phân cấp rõ ràng, đoạn mã minh họa, công thức định dạng LaTeX và các lưu ý trọng tâm ôn thi.
+  * **Trích dẫn trang nguồn (Grounding Citations):** Mỗi luận điểm đều gắn kèm số trang cụ thể trong tài liệu gốc (VD: *[Trang 15, Mục 2.3]*).
+* **Tương tác Sơ đồ Tư duy & Đồ thị Tri thức (Concept Graph 2D/3D):**
+  * Nhấn vào tab **"Đồ thị Tri thức"** trên thanh điều hướng hoặc nút *"Xem Sơ đồ"* trong tài liệu.
+  * Hỗ trợ 2 chế độ hiển thị:
+    * **Chế độ Cây (Tree Mindmap):** Cấu trúc phân cấp từ chủ đề lớn đến các tiểu mục con.
+    * **Chế độ Mạng lưới (Concept Graph):** Mạng đồ thị biểu diễn mối quan hệ đan xen giữa các khái niệm (`depends_on`, `inherits`, `defines`).
+  * **Thao tác cử chỉ cảm ứng mượt mà:**
+    * *Thu phóng (Pinch-to-zoom):* Dùng 2 ngón tay để phóng to hoặc thu nhỏ mạng lưới.
+    * *Kéo rê (Pan):* Di chuyển tự do trên không gian canvas.
+    * *Chạm vào nút (Tap Node):* Nhấp vào một đỉnh bất kỳ để mở BottomSheet hiển thị định nghĩa chi tiết, công thức toán liên quan và các khái niệm phụ thuộc.
+
+---
+
+### 6.4. Hỏi đáp Chuyên sâu với Trợ lý AI GraphRAG (Q&A Assistant)
+* Chuyển sang tab **"Trợ lý AI"** (biểu tượng Chat):
+  * Chọn tài liệu bạn muốn hỏi sâu (hoặc hỏi trên toàn bộ kho tri thức cá nhân).
+  * Nhập câu hỏi tự nhiên bằng tiếng Việt (VD: *"Giải thích điều kiện xảy ra Deadlock và công thức Banker's Algorithm kèm số trang"*).
+* **Trải nghiệm phản hồi vượt trội:**
+  * AI phản hồi theo thời gian thực dạng typing streaming.
+  * Nhờ kiến trúc **GraphRAG** kết hợp tìm kiếm ngữ nghĩa Vector và đồ thị thực thể Neo4j, AI suy luận đa bước chính xác tuyệt đối.
+  * **Cam kết không bịa đặt (No Hallucination):** Mỗi câu trả lời đều đính kèm thẻ trích dẫn số trang đối chứng với giáo trình gốc.
+
+---
+
+### 6.5. Quản lý Tủ sách Cá nhân & Xóa Tài liệu (Library Management)
+* Chuyển sang tab **"Tủ sách"**:
+  * Xem danh sách toàn bộ các tài liệu đã tải lên, kèm trạng thái xử lý AI, số trang và ngày tạo.
+  * Thanh tìm kiếm nhanh hỗ trợ lọc theo tên tài liệu hoặc phân loại file (PDF, Ảnh quét, Văn bản).
+* **Xóa tài liệu an toàn:**
+  * Nhấn vào biểu tượng thùng rác màu đỏ trên thẻ tài liệu cần xóa.
+  * Xác nhận xóa: Hệ thống sẽ tự động dọn dẹp sạch sẽ tài liệu trên cả cơ sở dữ liệu máy chủ (PostgreSQL/SQLite) và bộ nhớ cache ngoại tuyến của thiết bị.
+
+---
+
+### 6.6. Học nhóm & Chia sẻ Tài nguyên (Study Groups)
+* Chuyển sang tab **"Nhóm học"**:
+* **Tạo nhóm mới:**
+  * Nhấn nút **"Tạo nhóm học tập"**, nhập tên nhóm (VD: *Nhóm Đồ án Hệ điều hành - VKU*).
+  * Hệ thống tự động sinh **Mã nhóm riêng biệt** gồm các chữ cái và số (VD: `VKU78B`). Bạn có thể nhấn nút sao chép để gửi mã cho bạn bè trong lớp.
+* **Tham gia nhóm:**
+  * Nhập mã nhóm do bạn bè cung cấp vào ô *"Nhập mã nhóm"* và nhấn **"Vào nhóm"**.
+* **Chia sẻ Tài nguyên "Xử lý 1 lần - Zero Token":**
+  * Trong nhóm, nhấn **"Chia sẻ tài liệu vào nhóm"** và chọn tài liệu từ Tủ sách cá nhân của bạn.
+  * Tài liệu đã được xử lý AI sẽ xuất hiện ngay lập tức trong kho tài nguyên chung. Mọi thành viên trong nhóm đều có thể xem tóm tắt, sơ đồ mindmap và làm bài trắc nghiệm với độ trễ < 0.5s mà không tốn thêm token AI của nhóm.
+* **Lập phòng thi đấu nhóm:**
+  * Trưởng nhóm có thể nhấn nút **"Tạo phòng Đấu trí Trắc nghiệm từ tài liệu nhóm"** để tự động tạo phòng thi đấu cho cả nhóm cùng ôn luyện.
+
+---
+
+### 6.7. Đấu trí Trắc nghiệm Đồng bộ Nhiều người chơi (Multiplayer Quiz Battle)
+Chức năng thi đấu trắc nghiệm thời gian thực giúp ôn tập kiến thức cùng bạn bè:
+1. **Chủ phòng tạo phòng (Host):**
+   * Vào tab **"Đấu trí"** $\rightarrow$ tại mục *"Tạo phòng mới (Chủ phòng)"*, chọn tài liệu cần ôn thi $\rightarrow$ nhấn **"Tạo phòng đấu trí"**.
+   * Màn hình chuyển vào **Phòng chờ (Waiting Room)**, hiển thị **Mã phòng 6 chữ số** (VD: `849201`) cùng nút sao chép nhanh và nút **"Bắt đầu trận đấu"**.
+2. **Người chơi khác tham gia (Players):**
+   * Mở tab **"Đấu trí"** $\rightarrow$ tại mục *"Vào phòng bằng mã"*, nhập mã 6 số `849201` $\rightarrow$ bấm **"Vào phòng"**.
+   * Người chơi được đưa vào phòng chờ, thấy tên mình trong danh sách và dòng trạng thái: *"Đang chờ chủ phòng bắt đầu trận đấu..."* (người tham gia không thể tự bấm bắt đầu).
+3. **Diễn biến trận đấu đồng bộ (Server Clock Synchronization):**
+   * **Chủ phòng bấm "Bắt đầu trận đấu"** $\rightarrow$ Toàn bộ người chơi trong phòng đồng loạt chuyển sang pha **Đếm ngược 3... 2... 1...**
+   * **Cùng nhận 1 câu hỏi tại cùng 1 giây:** Đồng hồ đếm ngược 15 giây/câu hiển thị đồng nhất trên tất cả thiết bị.
+   * **Tính điểm tốc độ:** $\text{Điểm} = 100 \text{ (cơ bản)} + \text{giây còn lại} \times 10$. Người trả lời đúng và nhanh hơn sẽ nhận nhiều điểm hơn.
+   * **Pha hiển thị đáp án:** Hết 15 giây, server chuyển sang pha hiển thị đáp án đúng kèm lời giải thích học thuật chi tiết trong 5 giây và bảng xếp hạng tạm thời.
+   * **Vinh danh Bảng vàng:** Kết thúc toàn bộ câu hỏi, hệ thống hiển thị bục vinh danh **Podium Top 1, Top 2, Top 3** rực rỡ và tổng kết xếp hạng cá nhân.
+
+---
+
+### 6.8. Chế độ Hoạt động Ngoại tuyến (Offline-First Mode)
+* Khi bạn tắt Wi-Fi, bật chế độ máy bay hoặc đi vào khu vực mất sóng:
+  * Ứng dụng tự động phát hiện qua `NetworkInfo` và chuyển sang chế độ **Offline Mode**.
+  * Toàn bộ tài liệu, bản tóm tắt, sơ đồ mindmap và bộ câu hỏi trắc nghiệm cá nhân đã lưu trong máy vẫn mở ra xem được ngay lập tức với độ trễ **0ms**.
+  * Các thao tác quét ảnh OCR mới trong khi mất mạng sẽ được lưu trữ an toàn vào hàng đợi `OfflineSyncQueue` và tự động đồng bộ lên server ngay khi thiết bị có kết nối Internet trở lại.
+
+---
+
+## 🎮 7. Kịch bản Kiểm thử Nhanh Tính năng Đấu trí Realtime (Quiz Battle Test)
 
 Để kiểm chứng tính năng **Đấu trí Trắc nghiệm Đồng bộ Nhiều người chơi**:
 
@@ -208,7 +314,7 @@ Lệnh trên sẽ tự động khởi động đồng thời cả Backend (port 
 
 ---
 
-## 🧪 7. Chạy Kiểm thử Tự động (Automated Tests)
+## 🧪 8. Chạy Kiểm thử Tự động (Automated Tests)
 
 Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến trúc Clean Architecture theo mô hình **Arrange - Act - Assert (AAA Pattern)**:
 
@@ -228,7 +334,7 @@ Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến
 
 ---
 
-## 📁 8. Cấu trúc Mã nguồn Dự án (Directory Map)
+## 📁 9. Cấu trúc Mã nguồn Dự án (Directory Map)
 
 ```
 .
@@ -270,7 +376,7 @@ Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến
 
 ---
 
-## 🔗 9. Liên kết Tài nguyên Dự án
+## 🔗 10. Liên kết Tài nguyên Dự án
 
 * **Source Code Repository (GitHub):** [https://github.com/nguyenquangnhan/Learning-Support-Document-Summary-Assistant---DocuGraph.git](https://github.com/nguyenquangnhan/Learning-Support-Document-Summary-Assistant---DocuGraph.git)
 * **Interactive UI/UX Prototype (Figma):** [Figma Prototype URL](https://www.figma.com/design/3w2qVF83r7LJyYs0xnCQR8/Untitled?node-id=0-1&t=Iac2gzgWqkgfIXO5-0)
@@ -278,7 +384,7 @@ Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến
 
 ---
 
-## 👤 10. Thông tin Tác giả & Đồ án
+## 👤 11. Thông tin Tác giả & Đồ án
 
 * **Sinh viên thực hiện:** Nguyễn Quang Nhân
 * **Đề tài:** DocuGraph AI – Trợ lý Học tập Thông minh & Tóm tắt Tài liệu Đa tầng
@@ -291,3 +397,4 @@ Dự án tích hợp bộ kiểm thử tự động xác minh toàn vẹn kiến
 <p align="center">
   <b>DocuGraph AI</b> – Đơn giản hóa kiến thức, kết nối tương lai học tập.
 </p>
+
