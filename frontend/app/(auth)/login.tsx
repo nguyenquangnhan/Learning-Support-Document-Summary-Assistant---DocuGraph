@@ -458,17 +458,16 @@ const styles = StyleSheet.create({
   scrollContent: {
     flexGrow: 1,
     justifyContent: "flex-start",
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 60,
   },
   appPanel: {
-    flex: 1,
     width: "100%",
     maxWidth: 420,
     alignSelf: "center",
     padding: 16,
-    borderRadius: 28,
+    borderRadius: 24,
     backgroundColor: "#F8FAFC",
   },
 
