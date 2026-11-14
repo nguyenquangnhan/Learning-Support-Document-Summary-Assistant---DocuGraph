@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import {
   ArrowLeft,
+  Bell,
   CheckCircle,
   Copy,
   Download,
@@ -32,6 +33,7 @@ import {
 import { useRouter } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { api } from "../../lib/api";
 import { sl } from "../../src/core/di/injection_container";
 import { DocumentModel } from "../../src/features/documents/data/models/document_model";
 import { useAuthStore } from "../../stores/authStore";
@@ -57,6 +59,15 @@ interface SharedResource {
   createdAt: string;
 }
 
+interface GroupEvent {
+  id: string;
+  type: string;
+  actor_id: string;
+  actor_name: string;
+  message: string;
+  timestamp: number;
+}
+
 interface StudyGroup {
   id: string;
   name: string;
@@ -64,6 +75,7 @@ interface StudyGroup {
   isPrivate: boolean;
   members: GroupMember[];
   resources: SharedResource[];
+  last_event?: GroupEvent | null;
 }
 
 const STORAGE_KEY_GROUPS = "@docugraph/study_groups_v1";
@@ -73,13 +85,17 @@ export default function GroupScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
   const isDarkMode = useThemeStore((state) => state.isDarkMode);
-  const currentUserName = user?.full_name?.trim() || "Bạn";
+  const currentUserId = user?.id || "guest_user";
+  const currentUserName = user?.full_name?.trim() || user?.email?.split("@")[0] || "Bạn";
   const currentUserEmail = user?.email || "student@vku.udn.vn";
 
   const [groups, setGroups] = useState<StudyGroup[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string>("");
   const [offlineSavedIds, setOfflineSavedIds] = useState<Record<string, boolean>>({});
   const [toastMessage, setToastMessage] = useState<string>("");
+  const [liveJoinNotice, setLiveJoinNotice] = useState<string>("");
+  const seenEventIdsRef = useRef<Record<string, boolean>>({});
+  const knownMemberIdsRef = useRef<Record<string, Set<string>>>({});
 
   // Modals state
   const [showCreateGroupModal, setShowCreateGroupModal] = useState(false);
@@ -186,6 +202,99 @@ export default function GroupScreen() {
 
   const activeGroup = groups.find((g) => g.id === selectedGroupId) || groups[0];
 
+  // Đồng bộ nhóm hiện tại lên server và Polling mỗi 2.5 giây để nhận thành viên mới + thông báo
+  useEffect(() => {
+    if (!activeGroup?.code) return;
+    let isMounted = true;
+    const code = activeGroup.code.trim().toUpperCase();
+
+    // Khởi tạo danh sách thành viên đã biết cho nhóm này
+    if (!knownMemberIdsRef.current[code]) {
+      knownMemberIdsRef.current[code] = new Set(activeGroup.members.map((m) => m.id));
+    }
+
+    const syncAndPollGroup = async () => {
+      try {
+        // Đảm bảo nhóm đã tồn tại trên server và gộp danh sách hiện tại
+        const res = await api.post(`/groups/${code}/sync`, activeGroup);
+        const remoteGroup: StudyGroup = res.data;
+        if (!isMounted || !remoteGroup || !Array.isArray(remoteGroup.members)) return;
+
+        // Kiểm tra xem có thành viên mới nào vừa tham gia không
+        const knownSet = knownMemberIdsRef.current[code] || new Set<string>();
+        const newJoiners = remoteGroup.members.filter(
+          (m) => m.id && !knownSet.has(m.id) && m.id !== currentUserId
+        );
+
+        for (const m of remoteGroup.members) {
+          if (m.id) knownSet.add(m.id);
+        }
+        knownMemberIdsRef.current[code] = knownSet;
+
+        if (newJoiners.length > 0) {
+          const names = newJoiners.map((j) => j.name).join(", ");
+          const msg = `🎉 ${names} vừa tham gia vào nhóm "${remoteGroup.name}"!`;
+          setLiveJoinNotice(msg);
+          showToast(msg);
+          setTimeout(() => {
+            setLiveJoinNotice((prev) => (prev === msg ? "" : prev));
+          }, 6000);
+        } else if (
+          remoteGroup.last_event &&
+          remoteGroup.last_event.id &&
+          !seenEventIdsRef.current[remoteGroup.last_event.id]
+        ) {
+          seenEventIdsRef.current[remoteGroup.last_event.id] = true;
+          if (
+            remoteGroup.last_event.actor_id !== currentUserId &&
+            remoteGroup.last_event.type !== "created"
+          ) {
+            setLiveJoinNotice(remoteGroup.last_event.message);
+            showToast(remoteGroup.last_event.message);
+            setTimeout(() => {
+              setLiveJoinNotice((prev) =>
+                prev === remoteGroup.last_event?.message ? "" : prev
+              );
+            }, 6000);
+          }
+        }
+
+        // Cập nhật danh sách thành viên & tài nguyên nếu có thay đổi từ server
+        const currentMemKey = activeGroup.members.map((m) => `${m.id}:${m.name}`).join("|");
+        const remoteMemKey = remoteGroup.members.map((m) => `${m.id}:${m.name}`).join("|");
+        const currentResKey = activeGroup.resources.map((r) => r.id).join("|");
+        const remoteResKey = (remoteGroup.resources || []).map((r) => r.id).join("|");
+
+        if (currentMemKey !== remoteMemKey || currentResKey !== remoteResKey) {
+          setGroups((prev) => {
+            const updated = prev.map((g) =>
+              g.code.toUpperCase() === code
+                ? {
+                    ...g,
+                    name: remoteGroup.name || g.name,
+                    members: remoteGroup.members,
+                    resources: remoteGroup.resources || g.resources,
+                  }
+                : g
+            );
+            const storageKey = `${STORAGE_KEY_GROUPS}_${user?.id || "guest"}`;
+            AsyncStorage.setItem(storageKey, JSON.stringify(updated)).catch(() => {});
+            return updated;
+          });
+        }
+      } catch {
+        // Ignore network/offline polling error
+      }
+    };
+
+    syncAndPollGroup();
+    const timer = setInterval(syncAndPollGroup, 2500);
+    return () => {
+      isMounted = false;
+      clearInterval(timer);
+    };
+  }, [activeGroup?.code, activeGroup?.members.length, activeGroup?.resources.length, currentUserId]);
+
   // Combine group's explicitly shared resources with user's uploaded documents if not yet added
   const groupResources: SharedResource[] = React.useMemo(() => {
     if (!activeGroup) return [];
@@ -261,14 +370,15 @@ export default function GroupScreen() {
         .toString(36)
         .substring(2, 5)
         .toUpperCase();
-    const newGroup: StudyGroup = {
+
+    let newGroup: StudyGroup = {
       id: `grp_${Date.now()}`,
       name: cleanName,
       code: randomCode,
       isPrivate: true,
       members: [
         {
-          id: user?.id || "m_owner",
+          id: currentUserId,
           name: currentUserName,
           email: currentUserEmail,
           role: "Trưởng nhóm",
@@ -277,12 +387,30 @@ export default function GroupScreen() {
       ],
       resources: [],
     };
+
+    try {
+      const res = await api.post("/groups", {
+        name: cleanName,
+        code: randomCode,
+        host_id: currentUserId,
+        host_name: currentUserName,
+        host_email: currentUserEmail,
+        is_private: true,
+      });
+      if (res.data && res.data.code) {
+        newGroup = res.data;
+      }
+    } catch {
+      // Fallback offline creation
+    }
+
+    knownMemberIdsRef.current[newGroup.code] = new Set(newGroup.members.map((m) => m.id));
     const nextGroups = [newGroup, ...groups];
     await persistGroups(nextGroups);
     setSelectedGroupId(newGroup.id);
     setNewGroupName("");
     setShowCreateGroupModal(false);
-    showToast(`Đã tạo nhóm "${cleanName}" (Mã: ${randomCode})`);
+    showToast(`Đã tạo nhóm "${cleanName}" (Mã: ${newGroup.code})`);
   };
 
   // 3. Join Group by PIN Code
@@ -301,35 +429,47 @@ export default function GroupScreen() {
       return;
     }
 
-    const joinedGroup: StudyGroup = {
-      id: `grp_join_${Date.now()}`,
-      name: `Nhóm Học Tập (${code})`,
-      code,
-      isPrivate: true,
-      members: [
-        {
-          id: "m_host",
-          name: "Nguyễn Văn Minh",
-          email: "minhnv@vku.udn.vn",
-          role: "Trưởng nhóm",
-          color: "#10B981",
-        },
-        {
-          id: user?.id || "m_me",
-          name: currentUserName,
-          email: currentUserEmail,
-          role: "Thành viên",
-          color: "#4F46E5",
-        },
-      ],
-      resources: [],
-    };
+    let joinedGroup: StudyGroup | null = null;
+    try {
+      const res = await api.post("/groups/join", {
+        code,
+        user_id: currentUserId,
+        user_name: currentUserName,
+        user_email: currentUserEmail,
+      });
+      if (res.data && res.data.code) {
+        joinedGroup = res.data;
+      }
+    } catch {
+      // Fallback if offline
+    }
+
+    if (!joinedGroup) {
+      joinedGroup = {
+        id: `grp_join_${Date.now()}`,
+        name: `Nhóm Học Tập (${code})`,
+        code,
+        isPrivate: true,
+        members: [
+          {
+            id: currentUserId,
+            name: currentUserName,
+            email: currentUserEmail,
+            role: "Thành viên",
+            color: "#4F46E5",
+          },
+        ],
+        resources: [],
+      };
+    }
+
+    knownMemberIdsRef.current[code] = new Set(joinedGroup.members.map((m) => m.id));
     const nextGroups = [joinedGroup, ...groups];
     await persistGroups(nextGroups);
     setSelectedGroupId(joinedGroup.id);
     setJoinCodeInput("");
     setShowJoinGroupModal(false);
-    showToast(`Đã tham gia nhóm có mã ${code} thành công!`);
+    showToast(`🎉 Đã tham gia nhóm "${joinedGroup.name}" (Mã: ${code}) thành công!`);
   };
 
   // 4. Add Friend / Member to Active Group
@@ -341,6 +481,24 @@ export default function GroupScreen() {
       showToast("Vui lòng nhập tên bạn học cần thêm!");
       return;
     }
+
+    try {
+      const res = await api.post(`/groups/${activeGroup.code}/members`, { name, email });
+      if (res.data && Array.isArray(res.data.members)) {
+        const updatedGroups = groups.map((g) =>
+          g.id === activeGroup.id ? { ...g, members: res.data.members } : g
+        );
+        await persistGroups(updatedGroups);
+        setNewMemberName("");
+        setNewMemberEmail("");
+        setShowAddMemberModal(false);
+        showToast(`Đã thêm ${name} vào nhóm!`);
+        return;
+      }
+    } catch {
+      // Fallback local add
+    }
+
     const newMember: GroupMember = {
       id: `mem_${Date.now()}`,
       name,
@@ -361,6 +519,9 @@ export default function GroupScreen() {
   // 5. Remove Member from Active Group
   const handleRemoveMember = async (memberId: string) => {
     if (!activeGroup) return;
+    try {
+      await api.delete(`/groups/${activeGroup.code}/members/${memberId}`);
+    } catch {}
     const updatedGroups = groups.map((g) =>
       g.id === activeGroup.id
         ? { ...g, members: g.members.filter((m) => m.id !== memberId) }
@@ -374,6 +535,9 @@ export default function GroupScreen() {
   const handleDeleteActiveGroup = async () => {
     if (!activeGroup) return;
     const deletedName = activeGroup.name;
+    try {
+      await api.delete(`/groups/${activeGroup.code}`);
+    } catch {}
     const remaining = groups.filter((g) => g.id !== activeGroup.id);
     await persistGroups(remaining);
     setSelectedGroupId(remaining[0]?.id || "");
@@ -422,6 +586,18 @@ export default function GroupScreen() {
       summaryDetailed: doc.summaryDetailed,
       createdAt: doc.createdAt || new Date().toISOString(),
     };
+    try {
+      await api.post(`/groups/${activeGroup.code}/resources`, {
+        id: newRes.id,
+        title: newRes.title,
+        file_type: newRes.fileType,
+        num_pages: newRes.numPages,
+        uploaded_by: newRes.uploadedBy,
+        summary_tldr: newRes.summaryTldr,
+        summary_detailed: newRes.summaryDetailed,
+        created_at: newRes.createdAt,
+      });
+    } catch {}
     const exists = activeGroup.resources.some((r) => r.id === doc.id);
     if (!exists) {
       const updatedGroups = groups.map((g) =>
@@ -541,6 +717,26 @@ export default function GroupScreen() {
 
           {activeGroup ? (
             <>
+              {/* Live Real-time Notification Banner khi có thành viên mới vào nhóm */}
+              {liveJoinNotice ? (
+                <View className="flex-row items-center bg-emerald-50 border border-emerald-300 rounded-2xl p-3.5 mb-3">
+                  <View className="p-2 bg-emerald-600 rounded-full mr-2.5">
+                    <Bell size={14} color="#FFFFFF" />
+                  </View>
+                  <View className="flex-1">
+                    <Text className="text-[10px] font-extrabold text-emerald-700 uppercase">
+                      THÔNG BÁO NHÓM THỜI GIAN THỰC
+                    </Text>
+                    <Text className="text-xs font-bold text-emerald-900 mt-0.5">
+                      {liveJoinNotice}
+                    </Text>
+                  </View>
+                  <TouchableOpacity onPress={() => setLiveJoinNotice("")} className="p-1">
+                    <X size={15} color="#059669" />
+                  </TouchableOpacity>
+                </View>
+              ) : null}
+
               {/* Title & Delete Group Button */}
               <View className="flex-row items-start justify-between mb-3">
                 <Text

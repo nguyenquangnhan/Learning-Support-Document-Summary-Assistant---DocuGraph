@@ -35,11 +35,31 @@ export default function BattleRoomScreen() {
   const [starting, setStarting] = useState(false);
   const [pendingOption, setPendingOption] = useState<string | null>(null);
   const [nowTick, setNowTick] = useState(Date.now());
+  const [joinNotice, setJoinNotice] = useState("");
   const clockOffsetRef = useRef(0); // server_now(ms) - Date.now()
   const joinedRef = useRef(false);
+  const knownPlayerIdsRef = useRef<Set<string>>(new Set());
 
   const applyState = (s: BattleRoomState) => {
     clockOffsetRef.current = s.server_now * 1000 - Date.now();
+    if (s.players && s.players.length > 0) {
+      if (knownPlayerIdsRef.current.size === 0) {
+        s.players.forEach((p) => knownPlayerIdsRef.current.add(p.user_id));
+      } else {
+        const newPlayers = s.players.filter(
+          (p) => !knownPlayerIdsRef.current.has(p.user_id) && p.user_id !== userId
+        );
+        s.players.forEach((p) => knownPlayerIdsRef.current.add(p.user_id));
+        if (newPlayers.length > 0) {
+          const names = newPlayers.map((p) => p.name).join(", ");
+          const msg = `🎉 ${names} vừa tham gia phòng chờ!`;
+          setJoinNotice(msg);
+          setTimeout(() => {
+            setJoinNotice((prev) => (prev === msg ? "" : prev));
+          }, 5000);
+        }
+      }
+    }
     setState(s);
   };
 
@@ -196,6 +216,11 @@ export default function BattleRoomScreen() {
             Người chơi ({state.players.length})
           </Text>
         </View>
+        {joinNotice ? (
+          <View className="bg-emerald-500/20 border border-emerald-400/60 rounded-xl p-3 mb-3">
+            <Text className="text-emerald-300 text-xs font-bold text-center">{joinNotice}</Text>
+          </View>
+        ) : null}
         {state.players.map((p) => (
           <View
             key={p.user_id}
