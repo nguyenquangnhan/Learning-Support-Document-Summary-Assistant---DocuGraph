@@ -217,6 +217,32 @@ export default function GroupScreen() {
 
   const activeGroup = groups.find((g) => g.id === selectedGroupId) || groups[0];
 
+  // Combine group's explicitly shared resources with user's uploaded documents if not yet added
+  const groupResources: SharedResource[] = React.useMemo(() => {
+    if (!activeGroup) return [];
+    const map = new Map<string, SharedResource>();
+    for (const r of activeGroup.resources) {
+      map.set(r.id, r);
+    }
+    const myMember = activeGroup.members.find((m) => m.id === currentUserId);
+    const roleLabel = myMember?.role || "Thành viên";
+    for (const d of myDocuments) {
+      if (!map.has(d.id)) {
+        map.set(d.id, {
+          id: d.id,
+          title: d.title,
+          fileType: d.fileType,
+          numPages: d.numPages,
+          uploadedBy: `${currentUserName} (${roleLabel})`,
+          summaryTldr: d.summaryTldr,
+          summaryDetailed: d.summaryDetailed,
+          createdAt: d.createdAt,
+        });
+      }
+    }
+    return Array.from(map.values());
+  }, [activeGroup, myDocuments, currentUserName, currentUserId]);
+
   // Đồng bộ nhóm hiện tại lên server và Polling mỗi 2.5 giây để nhận thành viên mới + thông báo
   useEffect(() => {
     if (!activeGroup?.code) return;
@@ -230,10 +256,42 @@ export default function GroupScreen() {
 
     const syncAndPollGroup = async () => {
       try {
-        // Đảm bảo nhóm đã tồn tại trên server và gộp danh sách hiện tại
-        const res = await api.post(`/groups/${code}/sync`, activeGroup);
+        // Đảm bảo nhóm kèm toàn bộ tài liệu nhóm (groupResources) được đồng bộ lên server cho mọi thành viên
+        const payloadToSync: StudyGroup = {
+          ...activeGroup,
+          resources: groupResources,
+        };
+        const res = await api.post(`/groups/${code}/sync`, payloadToSync);
         const remoteGroup: StudyGroup = res.data;
         if (!isMounted || !remoteGroup || !Array.isArray(remoteGroup.members)) return;
+
+        // Tự động nạp các tài liệu chung của nhóm vào bộ nhớ đệm (Local Cache SSOT)
+        // để thành viên khác bấm "Xem Tóm tắt" / "Hỏi AI" đọc được ngay lập tức
+        for (const r of remoteGroup.resources || []) {
+          try {
+            const cachedModel = new DocumentModel({
+              id: r.id,
+              title: r.title,
+              fileType: r.fileType || "PDF",
+              fileSize: 1024 * 120,
+              numPages: r.numPages || 1,
+              status: "ready",
+              summaryTldr:
+                r.summaryTldr ||
+                `Tóm tắt tài liệu nhóm "${r.title}" (Chia sẻ bởi ${r.uploadedBy}).`,
+              summaryDetailed:
+                r.summaryDetailed ||
+                r.summaryTldr ||
+                `### Tài nguyên học tập chung của nhóm ${remoteGroup.name}\n• Tài liệu: ${r.title}\n• Người đăng: ${r.uploadedBy}`,
+              createdAt: r.createdAt || new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              isOfflinePending: false,
+            });
+            await sl.documentLocalDataSource.upsertCachedDocument(cachedModel);
+          } catch {
+            // ignore cache error
+          }
+        }
 
         // Kiểm tra xem có thành viên mới nào vừa tham gia không
         const knownSet = knownMemberIdsRef.current[code] || new Set<string>();
@@ -312,31 +370,7 @@ export default function GroupScreen() {
       isMounted = false;
       clearInterval(timer);
     };
-  }, [activeGroup?.code, activeGroup?.members.length, activeGroup?.resources.length, currentUserId]);
-
-  // Combine group's explicitly shared resources with user's uploaded documents if not yet added
-  const groupResources: SharedResource[] = React.useMemo(() => {
-    if (!activeGroup) return [];
-    const map = new Map<string, SharedResource>();
-    for (const r of activeGroup.resources) {
-      map.set(r.id, r);
-    }
-    for (const d of myDocuments) {
-      if (!map.has(d.id)) {
-        map.set(d.id, {
-          id: d.id,
-          title: d.title,
-          fileType: d.fileType,
-          numPages: d.numPages,
-          uploadedBy: `${currentUserName} (Trưởng nhóm)`,
-          summaryTldr: d.summaryTldr,
-          summaryDetailed: d.summaryDetailed,
-          createdAt: d.createdAt,
-        });
-      }
-    }
-    return Array.from(map.values());
-  }, [activeGroup, myDocuments, currentUserName]);
+  }, [activeGroup?.code, activeGroup?.members.length, groupResources.length, currentUserId]);
 
   // Tạo phòng Đấu trí Trắc nghiệm cho nhóm
   const handleCreateGroupBattle = async () => {
@@ -404,7 +438,16 @@ export default function GroupScreen() {
           color: "#4F46E5",
         },
       ],
-      resources: [],
+      resources: myDocuments.map((d) => ({
+        id: d.id,
+        title: d.title,
+        fileType: d.fileType || "PDF",
+        numPages: d.numPages || 1,
+        uploadedBy: `${currentUserName} (Trưởng nhóm)`,
+        summaryTldr: d.summaryTldr,
+        summaryDetailed: d.summaryDetailed,
+        createdAt: d.createdAt || new Date().toISOString(),
+      })),
     };
 
     try {
@@ -595,12 +638,14 @@ export default function GroupScreen() {
   // 7. Share Existing Personal Document into Group
   const handleSharePersonalDocToGroup = async (doc: any) => {
     if (!activeGroup) return;
+    const myMember = activeGroup.members.find((m) => m.id === currentUserId);
+    const roleLabel = myMember?.role || "Thành viên";
     const newRes: SharedResource = {
       id: doc.id,
       title: doc.title,
       fileType: doc.fileType || "PDF",
       numPages: doc.numPages || 1,
-      uploadedBy: `${currentUserName} (Trưởng nhóm)`,
+      uploadedBy: `${currentUserName} (${roleLabel})`,
       summaryTldr: doc.summaryTldr,
       summaryDetailed: doc.summaryDetailed,
       createdAt: doc.createdAt || new Date().toISOString(),
@@ -859,22 +904,26 @@ export default function GroupScreen() {
               </View>
 
               {/* Resources Header */}
-              <View className="flex-row items-center justify-between mb-1">
-                <Text className="text-sm font-bold text-slate-800">
+              <View className="flex-row items-center justify-between mb-2">
+                <Text
+                  style={{ color: isDarkMode ? "#F8FAFC" : "#1E293B" }}
+                  className="text-sm font-bold"
+                >
                   Kho tài nguyên chung ({groupResources.length})
                 </Text>
                 <TouchableOpacity
                   onPress={() => setShowShareDocModal(true)}
-                  className="flex-row items-center"
+                  style={{ backgroundColor: "#4F46E5" }}
+                  className="flex-row items-center px-3 py-1.5 rounded-xl"
                 >
-                  <Share2 size={13} color="#4F46E5" />
-                  <Text className="text-xs font-bold text-indigo-600 ml-1">
-                    Chia sẻ từ kho của tôi
+                  <Share2 size={13} color="#FFFFFF" />
+                  <Text className="text-xs font-bold text-white ml-1.5">
+                    + Chia sẻ tài liệu của tôi
                   </Text>
                 </TouchableOpacity>
               </View>
               <Text className="text-xs text-slate-400 mb-3">
-                (Xử lý 1 lần - Zero Token cho toàn bộ thành viên trong nhóm)
+                (Tài liệu chia sẻ sẽ đồng bộ tức thì cho mọi thành viên trong nhóm)
               </Text>
 
               {/* Shared Resources List */}
