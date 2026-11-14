@@ -365,19 +365,20 @@ export default function HomeScreen() {
         )}
       </ScrollView>
 
-      {/* 7. Floating Action Bar (Tải lên / Quét + Button tròn) */}
+      {/* 7. Floating Action Bar (Tải lên tài liệu + Quét OCR) */}
       <View style={styles.fabContainer}>
         <Pressable
           onPress={() => router.push("/document/scan")}
           style={styles.scanButton}
         >
-          <Text style={styles.scanText}>Tải lên / Quét</Text>
+          <Text style={styles.scanText}>Quét Camera</Text>
         </Pressable>
         <Pressable
           onPress={() => router.push("/document/new")}
-          style={({ pressed }) => [styles.plusCircle, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [styles.uploadPillButton, pressed && { opacity: 0.9 }]}
         >
-          <Plus size={24} color="#FFFFFF" strokeWidth={2.4} />
+          <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
+          <Text style={styles.uploadPillText}>Tải lên tài liệu</Text>
         </Pressable>
       </View>
 
@@ -714,28 +715,39 @@ const styles = StyleSheet.create({
     right: 20,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: 10,
   },
   scanButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderRadius: 22,
+    backgroundColor: "#EFF6FF",
+    borderWidth: 1,
+    borderColor: "#BFDBFE",
   },
   scanText: {
     fontSize: 12,
     fontWeight: "700",
     color: "#1D44B8",
   },
-  plusCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: "#1D44B8",
+  uploadPillButton: {
+    flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    paddingHorizontal: 18,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: "#1D44B8",
     justifyContent: "center",
     shadowColor: "#1D44B8",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 4,
+  },
+  uploadPillText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });

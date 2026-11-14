@@ -13,6 +13,7 @@ import {
   GitFork,
   HelpCircle,
   MessageSquare,
+  UploadCloud,
 } from "lucide-react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
@@ -113,8 +114,12 @@ export default function DocumentSummaryScreen() {
         </View>
 
         <View className="flex-row items-center space-x-2">
-          <TouchableOpacity className="p-2 bg-indigo-50 rounded-full">
-            <Volume2 size={18} color="#4F46E5" />
+          <TouchableOpacity
+            onPress={() => router.push("/document/new")}
+            className="px-2.5 py-1.5 bg-indigo-600 rounded-xl flex-row items-center"
+          >
+            <UploadCloud size={14} color="#FFFFFF" />
+            <Text className="text-[10px] font-bold text-white ml-1">+ Tải thêm</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} className="p-2">
             <Share2 size={18} color="#475569" />
