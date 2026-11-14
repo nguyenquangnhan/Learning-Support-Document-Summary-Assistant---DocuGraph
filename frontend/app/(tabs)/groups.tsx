@@ -81,6 +81,16 @@ interface StudyGroup {
 const STORAGE_KEY_GROUPS = "@docugraph/study_groups_v1";
 const AVATAR_COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#8B5CF6"];
 
+function formatGroupTitle(name: string, code: string): string {
+  const cleanName = (name || "").trim();
+  const cleanCode = (code || "").trim().toUpperCase();
+  if (!cleanCode) return cleanName;
+  if (cleanName.toUpperCase().includes(`(${cleanCode})`)) {
+    return cleanName;
+  }
+  return `${cleanName} (${cleanCode})`;
+}
+
 export default function GroupScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
@@ -141,8 +151,13 @@ export default function GroupScreen() {
           if (raw) {
             const parsed: StudyGroup[] = JSON.parse(raw);
             if (Array.isArray(parsed)) {
-              setGroups(parsed);
-              setSelectedGroupId(parsed[0]?.id || "");
+              // Xóa bỏ thành viên mẫu cũ "Nguyễn Văn Minh" nếu còn lưu trong cache cũ
+              const cleaned = parsed.map((g) => ({
+                ...g,
+                members: (g.members || []).filter((m) => m.id !== "m_host"),
+              }));
+              setGroups(cleaned);
+              setSelectedGroupId(cleaned[0]?.id || "");
               return;
             }
           }
@@ -259,13 +274,17 @@ export default function GroupScreen() {
           }
         }
 
-        // Cập nhật danh sách thành viên & tài nguyên nếu có thay đổi từ server
-        const currentMemKey = activeGroup.members.map((m) => `${m.id}:${m.name}`).join("|");
-        const remoteMemKey = remoteGroup.members.map((m) => `${m.id}:${m.name}`).join("|");
+        // Cập nhật tên nhóm, danh sách thành viên & tài nguyên nếu có thay đổi từ server
+        const currentMemKey = activeGroup.members.map((m) => `${m.id}:${m.name}:${m.role}`).join("|");
+        const remoteMemKey = remoteGroup.members.map((m) => `${m.id}:${m.name}:${m.role}`).join("|");
         const currentResKey = activeGroup.resources.map((r) => r.id).join("|");
         const remoteResKey = (remoteGroup.resources || []).map((r) => r.id).join("|");
 
-        if (currentMemKey !== remoteMemKey || currentResKey !== remoteResKey) {
+        if (
+          currentMemKey !== remoteMemKey ||
+          currentResKey !== remoteResKey ||
+          (remoteGroup.name && remoteGroup.name !== activeGroup.name)
+        ) {
           setGroups((prev) => {
             const updated = prev.map((g) =>
               g.code.toUpperCase() === code
@@ -708,7 +727,7 @@ export default function GroupScreen() {
                       isSelected ? "text-white" : "text-slate-700"
                     }`}
                   >
-                    {grp.name}
+                    {formatGroupTitle(grp.name, grp.code)}
                   </Text>
                 </Pressable>
               );
@@ -739,12 +758,20 @@ export default function GroupScreen() {
 
               {/* Title & Delete Group Button */}
               <View className="flex-row items-start justify-between mb-3">
-                <Text
-                  style={{ color: isDarkMode ? "#F8FAFC" : "#0F172A" }}
-                  className="text-2xl font-black flex-1 mr-3"
-                >
-                  {activeGroup.name}
-                </Text>
+                <View className="flex-1 mr-3">
+                  <Text
+                    style={{ color: isDarkMode ? "#F8FAFC" : "#0F172A" }}
+                    className="text-2xl font-black"
+                  >
+                    {formatGroupTitle(activeGroup.name, activeGroup.code)}
+                  </Text>
+                  <Text className="text-xs font-semibold text-indigo-600 mt-1">
+                    👑 Nhóm trưởng:{" "}
+                    {activeGroup.members.find((m) => m.role === "Trưởng nhóm")?.name ||
+                      activeGroup.members[0]?.name ||
+                      currentUserName}
+                  </Text>
+                </View>
                 <TouchableOpacity
                   onPress={() => setShowDeleteGroupModal(true)}
                   className="flex-row items-center bg-red-50 border border-red-200 px-3 py-2 rounded-xl"

@@ -171,25 +171,55 @@ async def sync_existing_group(code: str, payload: dict):
     """Allows a client that already has a local group (e.g. default group VKU23S) to register/merge it on server."""
     clean_code = code.strip().upper()
     existing = LIVE_GROUPS.get(clean_code)
+    incoming_name = (payload.get("name") or "").strip()
+    incoming_members = payload.get("members", []) or []
+
     if not existing:
         LIVE_GROUPS[clean_code] = {
             "id": payload.get("id") or f"grp_{clean_code}",
-            "name": payload.get("name") or f"Nhóm Học Tập ({clean_code})",
+            "name": incoming_name or f"Nhóm Học Tập ({clean_code})",
             "code": clean_code,
             "isPrivate": payload.get("isPrivate", True),
             "updated_at": time.time(),
             "last_event": None,
-            "members": payload.get("members", []),
+            "members": incoming_members,
             "resources": payload.get("resources", []),
         }
         return LIVE_GROUPS[clean_code]
 
-    # Merge members by id or email so nobody is lost
-    existing_ids = {m["id"] for m in existing["members"]}
-    for m in payload.get("members", []):
-        if m.get("id") and m["id"] not in existing_ids:
-            existing["members"].append(m)
-            existing_ids.add(m["id"])
+    # Nếu nhóm trên server đang mang tên placeholder "Nhóm Học Tập (...)" mà client gửi lên có tên thật của Nhóm trưởng,
+    # thì cập nhật ngay tên thật của nhóm trưởng đặt
+    if incoming_name and (
+        not existing.get("name")
+        or existing["name"].startswith("Nhóm Học Tập")
+    ) and not incoming_name.startswith("Nhóm Học Tập"):
+        existing["name"] = incoming_name
+
+    # Merge members và giữ đúng vai trò "Trưởng nhóm" của người tạo nhóm
+    member_by_id = {m["id"]: m for m in existing["members"] if m.get("id")}
+    for m in incoming_members:
+        mid = m.get("id")
+        if not mid:
+            continue
+        if mid not in member_by_id:
+            # Nếu incoming member là Trưởng nhóm thật sự thì đưa lên đầu danh sách
+            if m.get("role") == "Trưởng nhóm":
+                for em in existing["members"]:
+                    if em.get("role") == "Trưởng nhóm" and em.get("id") != mid:
+                        em["role"] = "Thành viên"
+                existing["members"].insert(0, m)
+            else:
+                existing["members"].append(m)
+            member_by_id[mid] = m
+        else:
+            # Cập nhật tên mới nhất và role Trưởng nhóm nếu client là chủ nhóm
+            if m.get("name"):
+                member_by_id[mid]["name"] = m["name"]
+            if m.get("email"):
+                member_by_id[mid]["email"] = m["email"]
+            if m.get("role") == "Trưởng nhóm":
+                for em in existing["members"]:
+                    em["role"] = "Trưởng nhóm" if em.get("id") == mid else "Thành viên"
 
     # Merge shared resources
     existing_res_ids = {r["id"] for r in existing["resources"]}
