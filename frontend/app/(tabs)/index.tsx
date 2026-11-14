@@ -19,14 +19,17 @@ import {
   GitFork,
   HardDrive,
   ListTree,
+  Moon,
   Plus,
   Search,
   SlidersHorizontal,
+  Sun,
   Trash2,
 } from "lucide-react-native";
 import { api } from "../../lib/api";
 import { sl } from "../../src/core/di/injection_container";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import type { DocumentItem } from "../../stores/documentStore";
 
 type FilterType = "all" | "textbook" | "mindmap" | "quiz";
@@ -42,6 +45,7 @@ export default function HomeScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
   const displayName = user?.full_name?.trim() || "Minh";
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -112,8 +116,11 @@ export default function HomeScreen() {
   }, [documents, searchQuery, activeFilter]);
 
   return (
-    <SafeAreaView style={styles.container} edges={["top"]}>
-      <StatusBar style="dark" />
+    <SafeAreaView
+      style={[styles.container, isDarkMode && { backgroundColor: "#0F172A" }]}
+      edges={["top"]}
+    >
+      <StatusBar style={isDarkMode ? "light" : "dark"} />
       
       <ScrollView
         style={{ flex: 1 }}
@@ -124,8 +131,12 @@ export default function HomeScreen() {
         {/* 1. Header & Avatar */}
         <View style={styles.headerRow}>
           <View>
-            <Text style={styles.brandTitle}>DocuGraph AI</Text>
-            <Text style={styles.greetingTitle}>Xin chào, {displayName} 👋</Text>
+            <Text style={[styles.brandTitle, isDarkMode && { color: "#818CF8" }]}>
+              DocuGraph AI
+            </Text>
+            <Text style={[styles.greetingTitle, isDarkMode && { color: "#F8FAFC" }]}>
+              Xin chào, {displayName} 👋
+            </Text>
             <Pressable onPress={handleToggleOfflineMode} style={styles.statusRow}>
               <View
                 style={[
@@ -133,48 +144,91 @@ export default function HomeScreen() {
                   isOfflineDemo && { backgroundColor: "#F59E0B" },
                 ]}
               />
-              <Text style={styles.statusText}>
+              <Text style={[styles.statusText, isDarkMode && { color: "#94A3B8" }]}>
                 {isOfflineDemo
                   ? "Chế độ Ngoại tuyến (Offline Cache SSOT)"
                   : "Đang trực tuyến · Clean Arch SSOT"}
               </Text>
             </Pressable>
           </View>
-          <View style={styles.avatarCircle}>
-            <Text style={styles.avatarText}>
-              {displayName.charAt(0).toUpperCase()}
-            </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+            <Pressable
+              onPress={toggleDarkMode}
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: 20,
+                backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9",
+                borderWidth: 1,
+                borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              {isDarkMode ? (
+                <Sun size={18} color="#FBBF24" />
+              ) : (
+                <Moon size={18} color="#475569" />
+              )}
+            </Pressable>
+            <Pressable
+              onPress={() => router.push("/(tabs)/profile")}
+              style={[
+                styles.avatarCircle,
+                isDarkMode && { backgroundColor: "#312E81" },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.avatarText,
+                  isDarkMode && { color: "#C7D2FE" },
+                ]}
+              >
+                {displayName.charAt(0).toUpperCase()}
+              </Text>
+            </Pressable>
           </View>
         </View>
 
         {/* 2. Thanh tìm kiếm */}
-        <View style={styles.searchBar}>
+        <View
+          style={[
+            styles.searchBar,
+            isDarkMode && { backgroundColor: "#1E293B", borderColor: "#334155" },
+          ]}
+        >
           <Search size={18} color="#94A3B8" />
           <TextInput
             placeholder="Tìm kiếm giáo trình, tóm tắt, đề thi..."
             placeholderTextColor="#94A3B8"
             value={searchQuery}
             onChangeText={setSearchQuery}
-            style={styles.searchInput}
+            style={[styles.searchInput, isDarkMode && { color: "#F8FAFC" }]}
           />
           <Pressable hitSlop={8}>
-            <SlidersHorizontal size={18} color="#1D44B8" />
+            <SlidersHorizontal size={18} color={isDarkMode ? "#818CF8" : "#1D44B8"} />
           </Pressable>
         </View>
 
         {/* 3. Thẻ bộ nhớ ngoại tuyến */}
-        <View style={styles.storageCard}>
+        <View
+          style={[
+            styles.storageCard,
+            isDarkMode && { backgroundColor: "#1E293B", borderWidth: 1, borderColor: "#334155" },
+          ]}
+        >
           <View style={styles.storageHeader}>
-            <HardDrive size={16} color="#1D44B8" />
-            <Text style={styles.storageText}>
+            <HardDrive size={16} color={isDarkMode ? "#818CF8" : "#1D44B8"} />
+            <Text style={[styles.storageText, isDarkMode && { color: "#E2E8F0" }]}>
               Bộ nhớ ngoại tuyến: {(documents.length * 1.4).toFixed(1)} MB / 2.0 GB
             </Text>
           </View>
-          <View style={styles.progressBarTrack}>
+          <View style={[styles.progressBarTrack, isDarkMode && { backgroundColor: "#334155" }]}>
             <View
               style={[
                 styles.progressBarFill,
                 { width: `${Math.min(100, documents.length * 5)}%` },
+                isDarkMode && { backgroundColor: "#6366F1" },
               ]}
             />
           </View>
@@ -182,8 +236,12 @@ export default function HomeScreen() {
 
         {/* 4. Tiêu đề mục & Số lượng */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Tài liệu gần đây</Text>
-          <Text style={styles.sectionCount}>{filteredDocs.length} tài liệu</Text>
+          <Text style={[styles.sectionTitle, isDarkMode && { color: "#F8FAFC" }]}>
+            Tài liệu gần đây
+          </Text>
+          <Text style={[styles.sectionCount, isDarkMode && { color: "#94A3B8" }]}>
+            {filteredDocs.length} tài liệu
+          </Text>
         </View>
 
         {/* 5. Bộ lọc Tabs (Filter Chips) */}
@@ -201,13 +259,20 @@ export default function HomeScreen() {
                 onPress={() => setActiveFilter(tab.id)}
                 style={[
                   styles.filterChip,
-                  isSelected ? styles.filterChipActive : styles.filterChipInactive,
+                  isSelected
+                    ? styles.filterChipActive
+                    : [
+                        styles.filterChipInactive,
+                        isDarkMode && { backgroundColor: "#1E293B", borderColor: "#334155" },
+                      ],
                 ]}
               >
                 <Text
                   style={[
                     styles.filterText,
-                    isSelected ? styles.filterTextActive : styles.filterTextInactive,
+                    isSelected
+                      ? styles.filterTextActive
+                      : [styles.filterTextInactive, isDarkMode && { color: "#94A3B8" }],
                   ]}
                 >
                   {tab.label}
@@ -223,10 +288,10 @@ export default function HomeScreen() {
         ) : filteredDocs.length === 0 ? (
           <View
             style={{
-              backgroundColor: "#FFFFFF",
+              backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
               borderRadius: 20,
               borderWidth: 1,
-              borderColor: "#E2E8F0",
+              borderColor: isDarkMode ? "#334155" : "#E2E8F0",
               padding: 28,
               alignItems: "center",
               marginTop: 8,
@@ -237,21 +302,28 @@ export default function HomeScreen() {
                 width: 56,
                 height: 56,
                 borderRadius: 28,
-                backgroundColor: "#EFF6FF",
+                backgroundColor: isDarkMode ? "#312E81" : "#EFF6FF",
                 alignItems: "center",
                 justifyContent: "center",
                 marginBottom: 12,
               }}
             >
-              <FileText size={26} color="#1D44B8" />
+              <FileText size={26} color={isDarkMode ? "#818CF8" : "#1D44B8"} />
             </View>
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#0F172A", marginBottom: 6 }}>
+            <Text
+              style={{
+                fontSize: 15,
+                fontWeight: "700",
+                color: isDarkMode ? "#F8FAFC" : "#0F172A",
+                marginBottom: 6,
+              }}
+            >
               Chưa có tài liệu nào
             </Text>
             <Text
               style={{
                 fontSize: 12,
-                color: "#64748B",
+                color: "#94A3B8",
                 textAlign: "center",
                 lineHeight: 18,
                 marginBottom: 16,
@@ -266,12 +338,18 @@ export default function HomeScreen() {
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 10,
-                  backgroundColor: "#EFF6FF",
+                  backgroundColor: isDarkMode ? "#0F172A" : "#EFF6FF",
                   borderWidth: 1,
-                  borderColor: "#BFDBFE",
+                  borderColor: isDarkMode ? "#334155" : "#BFDBFE",
                 }}
               >
-                <Text style={{ fontSize: 12, fontWeight: "700", color: "#1D44B8" }}>
+                <Text
+                  style={{
+                    fontSize: 12,
+                    fontWeight: "700",
+                    color: isDarkMode ? "#818CF8" : "#1D44B8",
+                  }}
+                >
                   Quét OCR (ML Kit)
                 </Text>
               </Pressable>
@@ -281,7 +359,7 @@ export default function HomeScreen() {
                   paddingHorizontal: 14,
                   paddingVertical: 10,
                   borderRadius: 10,
-                  backgroundColor: "#1D44B8",
+                  backgroundColor: "#4F46E5",
                 }}
               >
                 <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
@@ -299,7 +377,10 @@ export default function HomeScreen() {
                 <Pressable
                   key={doc.id || idx}
                   onPress={() => router.push(`/document/${doc.id}`)}
-                  style={styles.docCard}
+                  style={[
+                    styles.docCard,
+                    isDarkMode && { backgroundColor: "#1E293B", borderColor: "#334155" },
+                  ]}
                 >
                   <View style={styles.docTopRow}>
                     {/* Icon File badge */}
@@ -312,10 +393,13 @@ export default function HomeScreen() {
 
                     {/* Tiêu đề & Thông tin phụ */}
                     <View style={{ flex: 1, marginHorizontal: 12 }}>
-                      <Text style={styles.docTitle} numberOfLines={1}>
+                      <Text
+                        style={[styles.docTitle, isDarkMode && { color: "#F8FAFC" }]}
+                        numberOfLines={1}
+                      >
                         {doc.title}
                       </Text>
-                      <Text style={styles.docSubtitle}>
+                      <Text style={[styles.docSubtitle, isDarkMode && { color: "#94A3B8" }]}>
                         {doc.num_pages || (isPdf ? 45 : 12)} trang • {isPdf ? "Đã xử lý OCR" : "Tóm tắt TL;DR"}
                       </Text>
                     </View>
@@ -369,13 +453,24 @@ export default function HomeScreen() {
       <View style={styles.fabContainer}>
         <Pressable
           onPress={() => router.push("/document/scan")}
-          style={styles.scanButton}
+          style={[
+            styles.scanButton,
+            isDarkMode && {
+              backgroundColor: "#1E293B",
+              borderColor: "#475569",
+            },
+          ]}
         >
-          <Text style={styles.scanText}>Quét Camera</Text>
+          <Text style={[styles.scanText, isDarkMode && { color: "#A5B4FC" }]}>
+            Quét Camera
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => router.push("/document/new")}
-          style={({ pressed }) => [styles.uploadPillButton, pressed && { opacity: 0.9 }]}
+          style={({ pressed }) => [
+            styles.uploadPillButton,
+            pressed && { backgroundColor: "#4338CA", transform: [{ scale: 0.98 }] },
+          ]}
         >
           <Plus size={18} color="#FFFFFF" strokeWidth={2.5} />
           <Text style={styles.uploadPillText}>Tải lên tài liệu</Text>
@@ -737,13 +832,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#1D44B8",
+    backgroundColor: "#4F46E5",
+    borderWidth: 1,
+    borderColor: "#6366F1",
     justifyContent: "center",
-    shadowColor: "#1D44B8",
+    shadowColor: "#4F46E5",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 5,
   },
   uploadPillText: {
     fontSize: 13,

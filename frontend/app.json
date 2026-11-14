@@ -45,6 +45,12 @@
         "projectId": "efa6ce82-d887-4a0f-93fd-3db3a0b9ff44"
       }
     },
-    "owner": "nhanne"
+    "owner": "nhanne",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/efa6ce82-d887-4a0f-93fd-3db3a0b9ff44"
+    }
   }
 }

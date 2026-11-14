@@ -4,6 +4,7 @@ import { StatusBar } from "expo-status-bar";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { useAuthStore } from "../stores/authStore";
+import { useThemeStore } from "../stores/themeStore";
 import "../global.css";
 
 const queryClient = new QueryClient();
@@ -12,9 +13,11 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments();
   const { user, isGuest, isLoading, initializeAuth } = useAuthStore();
+  const { isDarkMode, initializeTheme } = useThemeStore();
 
   useEffect(() => {
     initializeAuth();
+    initializeTheme();
   }, []);
 
   useEffect(() => {

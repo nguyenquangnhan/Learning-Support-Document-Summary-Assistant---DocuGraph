@@ -18,11 +18,13 @@ import {
 import { useRouter, useLocalSearchParams } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { sl } from "../../src/core/di/injection_container";
+import { useThemeStore } from "../../stores/themeStore";
 
 export default function DocumentSummaryScreen() {
   const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [activeTab, setActiveTab] = useState<"tldr" | "detailed">("detailed");
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
 
   const { data: doc, isLoading } = useQuery({
     queryKey: ["document", id],
@@ -83,9 +85,15 @@ export default function DocumentSummaryScreen() {
 
   if (isLoading) {
     return (
-      <View className="flex-1 bg-white items-center justify-center">
+      <View
+        style={{ backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF" }}
+        className="flex-1 items-center justify-center"
+      >
         <ActivityIndicator size="large" color="#4F46E5" />
-        <Text className="text-slate-500 font-medium text-xs mt-3">
+        <Text
+          style={{ color: isDarkMode ? "#94A3B8" : "#64748B" }}
+          className="font-medium text-xs mt-3"
+        >
           Đang tải bản tóm tắt tri thức...
         </Text>
       </View>
@@ -97,18 +105,28 @@ export default function DocumentSummaryScreen() {
   const detailed = doc?.summaryDetailed || tldr;
 
   return (
-    <View className="flex-1 bg-white pt-12">
+    <View
+      style={{ backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF" }}
+      className="flex-1 pt-12"
+    >
       {/* Top Header Navigation */}
-      <View className="px-4 flex-row items-center justify-between pb-3 border-b border-slate-100">
+      <View
+        style={{ borderBottomColor: isDarkMode ? "#1E293B" : "#F1F5F9" }}
+        className="px-4 flex-row items-center justify-between pb-3 border-b"
+      >
         <TouchableOpacity onPress={() => router.back()} className="p-1">
-          <ArrowLeft size={22} color="#334155" />
+          <ArrowLeft size={22} color={isDarkMode ? "#E2E8F0" : "#334155"} />
         </TouchableOpacity>
 
         <View className="items-center flex-1 mx-2">
           <Text className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
             TÀI LIỆU HỌC TẬP
           </Text>
-          <Text className="text-xs font-bold text-slate-800" numberOfLines={1}>
+          <Text
+            style={{ color: isDarkMode ? "#F8FAFC" : "#1E293B" }}
+            className="text-xs font-bold"
+            numberOfLines={1}
+          >
             {title}
           </Text>
         </View>
@@ -116,37 +134,57 @@ export default function DocumentSummaryScreen() {
         <View className="flex-row items-center space-x-2">
           <TouchableOpacity
             onPress={() => router.push("/document/new")}
-            className="px-2.5 py-1.5 bg-indigo-600 rounded-xl flex-row items-center"
+            style={{ backgroundColor: "#4F46E5" }}
+            className="px-3 py-1.5 rounded-xl flex-row items-center"
           >
             <UploadCloud size={14} color="#FFFFFF" />
-            <Text className="text-[10px] font-bold text-white ml-1">+ Tải thêm</Text>
+            <Text className="text-[11px] font-bold text-white ml-1">+ Tải thêm</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={handleShare} className="p-2">
-            <Share2 size={18} color="#475569" />
+            <Share2 size={18} color={isDarkMode ? "#94A3B8" : "#475569"} />
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Reading Progress Line */}
-      <View className="w-full bg-slate-100 h-1">
+      <View style={{ backgroundColor: isDarkMode ? "#1E293B" : "#F1F5F9" }} className="w-full h-1">
         <View className="bg-indigo-600 h-1 w-[60%]" />
       </View>
 
       {/* Summary Type Switcher */}
-      <View className="flex-row px-5 pt-3 pb-2 border-b border-slate-100 space-x-3 items-center justify-between">
+      <View
+        style={{ borderBottomColor: isDarkMode ? "#1E293B" : "#F1F5F9" }}
+        className="flex-row px-5 pt-3 pb-2 border-b space-x-3 items-center justify-between"
+      >
         <View className="flex-row space-x-2">
           <TouchableOpacity
             onPress={() => setActiveTab("detailed")}
-            className={`py-1.5 px-3 rounded-xl border ${
-              activeTab === "detailed"
-                ? "bg-indigo-600 border-indigo-600"
-                : "bg-slate-50 border-slate-200"
-            }`}
+            style={{
+              backgroundColor:
+                activeTab === "detailed"
+                  ? "#4F46E5"
+                  : isDarkMode
+                  ? "#1E293B"
+                  : "#F8FAFC",
+              borderColor:
+                activeTab === "detailed"
+                  ? "#4F46E5"
+                  : isDarkMode
+                  ? "#334155"
+                  : "#E2E8F0",
+            }}
+            className="py-1.5 px-3 rounded-xl border"
           >
             <Text
-              className={`text-xs font-bold ${
-                activeTab === "detailed" ? "text-white" : "text-slate-600"
-              }`}
+              style={{
+                color:
+                  activeTab === "detailed"
+                    ? "#FFFFFF"
+                    : isDarkMode
+                    ? "#CBD5E1"
+                    : "#475569",
+              }}
+              className="text-xs font-bold"
             >
               Tóm tắt chi tiết
             </Text>
@@ -154,16 +192,32 @@ export default function DocumentSummaryScreen() {
 
           <TouchableOpacity
             onPress={() => setActiveTab("tldr")}
-            className={`py-1.5 px-3 rounded-xl border ${
-              activeTab === "tldr"
-                ? "bg-indigo-600 border-indigo-600"
-                : "bg-slate-50 border-slate-200"
-            }`}
+            style={{
+              backgroundColor:
+                activeTab === "tldr"
+                  ? "#4F46E5"
+                  : isDarkMode
+                  ? "#1E293B"
+                  : "#F8FAFC",
+              borderColor:
+                activeTab === "tldr"
+                  ? "#4F46E5"
+                  : isDarkMode
+                  ? "#334155"
+                  : "#E2E8F0",
+            }}
+            className="py-1.5 px-3 rounded-xl border"
           >
             <Text
-              className={`text-xs font-bold ${
-                activeTab === "tldr" ? "text-white" : "text-slate-600"
-              }`}
+              style={{
+                color:
+                  activeTab === "tldr"
+                    ? "#FFFFFF"
+                    : isDarkMode
+                    ? "#CBD5E1"
+                    : "#475569",
+              }}
+              className="text-xs font-bold"
             >
               TL;DR Rút gọn
             </Text>
@@ -182,7 +236,7 @@ export default function DocumentSummaryScreen() {
       {/* Main Content Body */}
       <ScrollView className="flex-1 px-5 pt-4" showsVerticalScrollIndicator={false}>
         <View className="flex-row justify-between items-center mb-2">
-          <Text className="text-xs font-bold text-indigo-600 uppercase">
+          <Text className="text-xs font-bold text-indigo-500 uppercase">
             {doc?.numPages ? `${doc.numPages} TRANG TÀI LIỆU` : "TỔNG QUAN"}
           </Text>
           <Text className="text-xs text-slate-400 font-medium">
@@ -190,26 +244,55 @@ export default function DocumentSummaryScreen() {
           </Text>
         </View>
 
-        <Text className="text-xl font-black text-slate-900 leading-tight mb-4">{title}</Text>
+        <Text
+          style={{ color: isDarkMode ? "#F8FAFC" : "#0F172A" }}
+          className="text-xl font-black leading-tight mb-4"
+        >
+          {title}
+        </Text>
 
         {/* Summary text content */}
-        <View className="bg-slate-50 border border-slate-100 rounded-2xl p-4 mb-6">
-          <Text className="text-xs text-slate-700 leading-relaxed font-normal whitespace-pre-line">
+        <View
+          style={{
+            backgroundColor: isDarkMode ? "#1E293B" : "#F8FAFC",
+            borderColor: isDarkMode ? "#334155" : "#F1F5F9",
+          }}
+          className="border rounded-2xl p-4 mb-6"
+        >
+          <Text
+            style={{ color: isDarkMode ? "#E2E8F0" : "#334155" }}
+            className="text-xs leading-relaxed font-normal whitespace-pre-line"
+          >
             {activeTab === "detailed" ? detailed : tldr}
           </Text>
         </View>
 
         {/* Citation Chip Badge */}
-        <TouchableOpacity className="bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 self-start flex-row items-center mb-8">
-          <Text className="text-xs font-bold text-indigo-700 mr-1.5">
+        <TouchableOpacity
+          style={{
+            backgroundColor: isDarkMode ? "#1E1B4B" : "#EEF2FF",
+            borderColor: isDarkMode ? "#3730A3" : "#C7D2FE",
+          }}
+          className="border rounded-xl px-3 py-2 self-start flex-row items-center mb-8"
+        >
+          <Text
+            style={{ color: isDarkMode ? "#A5B4FC" : "#4338CA" }}
+            className="text-xs font-bold mr-1.5"
+          >
             [Trích dẫn trang 1 - {doc?.numPages || 1}]
           </Text>
-          <ExternalLink size={12} color="#4F46E5" />
+          <ExternalLink size={12} color={isDarkMode ? "#818CF8" : "#4F46E5"} />
         </TouchableOpacity>
       </ScrollView>
 
       {/* Bottom Floating Quick Actions Toolbar */}
-      <View className="bg-white border-t border-slate-100 px-4 py-3 flex-row space-x-2">
+      <View
+        style={{
+          backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF",
+          borderTopColor: isDarkMode ? "#1E293B" : "#F1F5F9",
+        }}
+        className="border-t px-4 py-3 flex-row space-x-2"
+      >
         <TouchableOpacity
           onPress={() => router.push({ pathname: "/(tabs)/graph", params: { documentId: doc?.id } })}
           className="flex-1 bg-indigo-50/80 py-3 rounded-2xl items-center justify-center"

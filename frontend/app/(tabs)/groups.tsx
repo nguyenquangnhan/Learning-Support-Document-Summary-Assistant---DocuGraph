@@ -35,6 +35,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { sl } from "../../src/core/di/injection_container";
 import { DocumentModel } from "../../src/features/documents/data/models/document_model";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { battleApi } from "../../lib/battleApi";
 
 interface GroupMember {
@@ -71,6 +72,7 @@ const AVATAR_COLORS = ["#4F46E5", "#10B981", "#F59E0B", "#EC4899", "#06B6D4", "#
 export default function GroupScreen() {
   const router = useRouter();
   const user = useAuthStore((state) => state.user);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const currentUserName = user?.full_name?.trim() || "Bạn";
   const currentUserEmail = user?.email || "student@vku.udn.vn";
 
@@ -420,7 +422,10 @@ export default function GroupScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-50 pt-12">
+    <View
+      style={{ backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC" }}
+      className="flex-1 pt-12"
+    >
       {/* Toast Notification Banner */}
       {toastMessage ? (
         <View
@@ -446,15 +451,30 @@ export default function GroupScreen() {
       ) : null}
 
       {/* Header */}
-      <View className="px-4 flex-row items-center justify-between pb-3 border-b border-slate-200/70">
-        <TouchableOpacity onPress={() => router.push("/(tabs)")} className="p-1.5 rounded-full bg-white border border-slate-200">
-          <ArrowLeft size={18} color="#334155" />
+      <View
+        style={{ borderBottomColor: isDarkMode ? "#1E293B" : "#E2E8F0" }}
+        className="px-4 flex-row items-center justify-between pb-3 border-b"
+      >
+        <TouchableOpacity
+          onPress={() => router.push("/(tabs)")}
+          style={{
+            backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+            borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+          }}
+          className="p-1.5 rounded-full border"
+        >
+          <ArrowLeft size={18} color={isDarkMode ? "#E2E8F0" : "#334155"} />
         </TouchableOpacity>
         <View className="items-center">
-          <Text className="text-[10px] text-indigo-600 font-bold uppercase tracking-wider">
+          <Text className="text-[10px] text-indigo-500 font-bold uppercase tracking-wider">
             KHÔNG GIAN HỌC CHUNG
           </Text>
-          <Text className="text-base font-bold text-slate-800">Nhóm học tập</Text>
+          <Text
+            style={{ color: isDarkMode ? "#F8FAFC" : "#1E293B" }}
+            className="text-base font-bold"
+          >
+            Nhóm học tập
+          </Text>
         </View>
         <View className="flex-row items-center gap-1.5">
           <TouchableOpacity

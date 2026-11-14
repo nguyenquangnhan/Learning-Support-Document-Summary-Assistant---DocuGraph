@@ -19,12 +19,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Swords, LogIn, Crown, FileText, CheckCircle2 } from "lucide-react-native";
 import { sl } from "../../src/core/di/injection_container";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 import { battleApi } from "../../lib/battleApi";
 
 export default function BattleLobbyScreen() {
   const router = useRouter();
   const { documentId: presetDocId } = useLocalSearchParams<{ documentId?: string }>();
   const user = useAuthStore((s) => s.user);
+  const isDarkMode = useThemeStore((s) => s.isDarkMode);
   const userId = user?.id || "";
   const userName = user?.full_name?.trim() || user?.email?.split("@")[0] || "Người chơi";
 
@@ -98,11 +100,23 @@ export default function BattleLobbyScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-slate-50" edges={["top"]}>
+    <SafeAreaView
+      style={{ backgroundColor: isDarkMode ? "#0F172A" : "#F8FAFC" }}
+      className="flex-1"
+      edges={["top"]}
+    >
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 40 }}>
-        <Text className="text-xs font-bold text-indigo-600 uppercase">Đấu trí trắc nghiệm</Text>
-        <Text className="text-2xl font-black text-slate-900 mt-1">Phòng thi đấu nhiều người</Text>
-        <Text className="text-xs text-slate-500 mt-1 leading-5">
+        <Text className="text-xs font-bold text-indigo-500 uppercase">Đấu trí trắc nghiệm</Text>
+        <Text
+          style={{ color: isDarkMode ? "#F8FAFC" : "#0F172A" }}
+          className="text-2xl font-black mt-1"
+        >
+          Phòng thi đấu nhiều người
+        </Text>
+        <Text
+          style={{ color: isDarkMode ? "#94A3B8" : "#64748B" }}
+          className="text-xs mt-1 leading-5"
+        >
           Chủ phòng tạo phòng và chia sẻ mã 6 số. Mọi người nhập mã để vào phòng chờ, khi chủ phòng
           bấm "Bắt đầu" tất cả sẽ cùng trả lời từng câu hỏi tại cùng một thời điểm.
         </Text>
@@ -114,10 +128,21 @@ export default function BattleLobbyScreen() {
         ) : null}
 
         {/* Vào phòng bằng mã */}
-        <View className="bg-white rounded-2xl border border-slate-200 p-4 mt-5">
+        <View
+          style={{
+            backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+            borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+          }}
+          className="rounded-2xl border p-4 mt-5"
+        >
           <View className="flex-row items-center mb-3">
-            <LogIn size={18} color="#4F46E5" />
-            <Text className="text-sm font-bold text-slate-800 ml-2">Vào phòng bằng mã</Text>
+            <LogIn size={18} color="#6366F1" />
+            <Text
+              style={{ color: isDarkMode ? "#F8FAFC" : "#1E293B" }}
+              className="text-sm font-bold ml-2"
+            >
+              Vào phòng bằng mã
+            </Text>
           </View>
           <TextInput
             value={roomCodeInput}
@@ -126,7 +151,12 @@ export default function BattleLobbyScreen() {
             placeholderTextColor="#94A3B8"
             keyboardType="number-pad"
             maxLength={6}
-            className="border border-slate-200 rounded-xl px-4 py-3 text-lg font-bold tracking-[6px] text-center text-slate-900"
+            style={{
+              backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF",
+              borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+              color: isDarkMode ? "#F8FAFC" : "#0F172A",
+            }}
+            className="border rounded-xl px-4 py-3 text-lg font-bold tracking-[6px] text-center"
           />
           <Pressable
             onPress={handleJoinRoom}
@@ -142,12 +172,26 @@ export default function BattleLobbyScreen() {
         </View>
 
         {/* Tạo phòng mới (chủ phòng) */}
-        <View className="bg-white rounded-2xl border border-slate-200 p-4 mt-4">
+        <View
+          style={{
+            backgroundColor: isDarkMode ? "#1E293B" : "#FFFFFF",
+            borderColor: isDarkMode ? "#334155" : "#E2E8F0",
+          }}
+          className="rounded-2xl border p-4 mt-4"
+        >
           <View className="flex-row items-center mb-1">
             <Crown size={18} color="#F59E0B" />
-            <Text className="text-sm font-bold text-slate-800 ml-2">Tạo phòng mới (Chủ phòng)</Text>
+            <Text
+              style={{ color: isDarkMode ? "#F8FAFC" : "#1E293B" }}
+              className="text-sm font-bold ml-2"
+            >
+              Tạo phòng mới (Chủ phòng)
+            </Text>
           </View>
-          <Text className="text-xs text-slate-500 mb-3">
+          <Text
+            style={{ color: isDarkMode ? "#94A3B8" : "#64748B" }}
+            className="text-xs mb-3"
+          >
             Chọn tài liệu để AI sinh đề thi trắc nghiệm cho cả phòng:
           </Text>
 

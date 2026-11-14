@@ -7,6 +7,7 @@ import * as FileSystem from 'expo-file-system';
 import { X, UploadCloud, CheckCircle2, Lock, Clock, FileText, ChevronRight, Trash2 } from 'lucide-react-native';
 import { api } from '../../lib/api';
 import { useAuthStore } from '../../stores/authStore';
+import { useThemeStore } from '../../stores/themeStore';
 import { sl } from '../../src/core/di/injection_container';
 import { DocumentModel } from '../../src/features/documents/data/models/document_model';
 
@@ -18,6 +19,7 @@ export default function NewDocumentScreen() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const user = useAuthStore((state) => state.user);
+  const isDarkMode = useThemeStore((state) => state.isDarkMode);
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [summaryType, setSummaryType] = useState<SummaryType>('detailed');
   const [isProcessing, setIsProcessing] = useState(false);
@@ -190,60 +192,133 @@ export default function NewDocumentScreen() {
   };
 
   return (
-    <View className="flex-1 bg-slate-900/40 justify-end">
-      <View className="bg-white rounded-t-3xl pt-4 pb-8 px-5 max-h-[92%] shadow-2xl">
+    <View className="flex-1 bg-slate-900/60 justify-end">
+      <View
+        style={{ backgroundColor: isDarkMode ? '#0F172A' : '#FFFFFF' }}
+        className="rounded-t-3xl pt-4 pb-8 px-5 max-h-[92%] shadow-2xl"
+      >
         {/* Header Modal */}
-        <View className="flex-row items-center justify-between border-b border-slate-100 pb-4 mb-4">
-          <Text className="text-lg font-bold text-slate-900">Thêm tài liệu học tập</Text>
-          <TouchableOpacity onPress={() => router.back()} className="p-1.5 rounded-full bg-slate-100">
-            <X size={18} color="#64748B" />
+        <View
+          style={{ borderBottomColor: isDarkMode ? '#1E293B' : '#F1F5F9' }}
+          className="flex-row items-center justify-between border-b pb-4 mb-4"
+        >
+          <Text
+            style={{ color: isDarkMode ? '#F8FAFC' : '#0F172A' }}
+            className="text-lg font-bold"
+          >
+            Thêm tài liệu học tập
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={{ backgroundColor: isDarkMode ? '#1E293B' : '#F1F5F9' }}
+            className="p-1.5 rounded-full"
+          >
+            <X size={18} color={isDarkMode ? '#94A3B8' : '#64748B'} />
           </TouchableOpacity>
         </View>
 
         <ScrollView showsVerticalScrollIndicator={false}>
           {/* Tab Switcher */}
-          <View className="flex-row border-b border-slate-200 mb-5">
+          <View
+            style={{ borderBottomColor: isDarkMode ? '#1E293B' : '#E2E8F0' }}
+            className="flex-row border-b mb-5"
+          >
             <TouchableOpacity className="flex-1 py-2.5 items-center border-b-2 border-indigo-600">
-              <Text className="text-xs font-bold text-indigo-600">Tải file (PDF/DOCX)</Text>
+              <Text className="text-xs font-bold text-indigo-500">Tải file (PDF/DOCX)</Text>
             </TouchableOpacity>
 
             <TouchableOpacity 
               onPress={() => router.push('/document/scan')}
               className="flex-1 py-2.5 items-center border-b-2 border-transparent"
             >
-              <Text className="text-xs font-bold text-slate-500">Chụp ảnh OCR Camera</Text>
+              <Text className="text-xs font-bold text-slate-400">Chụp ảnh OCR Camera</Text>
             </TouchableOpacity>
           </View>
 
           {/* Upload Dropzone Area */}
           <TouchableOpacity 
             onPress={handlePickDocument}
-            className="border-2 border-dashed border-indigo-200 bg-indigo-50/40 rounded-2xl py-7 items-center justify-center mb-5 px-4"
+            style={{
+              backgroundColor: selectedFile
+                ? isDarkMode
+                  ? '#064E3B'
+                  : '#ECFDF5'
+                : isDarkMode
+                ? '#1E293B'
+                : '#EEF2FF',
+              borderColor: selectedFile ? '#10B981' : '#6366F1',
+            }}
+            className="border-2 border-dashed rounded-2xl py-7 items-center justify-center mb-5 px-4"
           >
-            <View className="p-3 bg-indigo-100/60 rounded-full mb-2">
-              <UploadCloud size={28} color="#4F46E5" />
+            <View
+              style={{
+                backgroundColor: selectedFile
+                  ? isDarkMode
+                    ? '#065F46'
+                    : '#D1FAE5'
+                  : isDarkMode
+                  ? '#312E81'
+                  : '#E0E7FF',
+              }}
+              className="p-3 rounded-full mb-2"
+            >
+              {selectedFile ? (
+                <CheckCircle2 size={28} color="#10B981" />
+              ) : (
+                <UploadCloud size={28} color={isDarkMode ? '#818CF8' : '#4F46E5'} />
+              )}
             </View>
-            <Text className="text-xs text-slate-700 font-bold text-center mb-1">
-              {selectedFile ? selectedFile.name : 'Chạm để tải file từ máy'}
+            <Text
+              style={{
+                color: selectedFile
+                  ? isDarkMode
+                    ? '#A7F3D0'
+                    : '#065F46'
+                  : isDarkMode
+                  ? '#F8FAFC'
+                  : '#1E293B',
+              }}
+              className="text-xs font-bold text-center mb-1"
+            >
+              {selectedFile ? `✓ Đã chọn: ${selectedFile.name}` : 'Chạm để chọn file từ máy'}
             </Text>
             <Text className="text-[11px] text-slate-400 font-medium text-center">
-              (Tối đa 50MB, 500 trang - PDF, DOCX)
+              {selectedFile
+                ? 'Chạm lại vào đây nếu muốn đổi sang tệp khác'
+                : '(Tối đa 50MB, 500 trang - PDF, DOCX, TXT)'}
             </Text>
           </TouchableOpacity>
 
           {/* Option 1: TL;DR */}
           <TouchableOpacity
             onPress={() => setSummaryType('tldr')}
-            className={`p-4 rounded-2xl border flex-row items-center mb-3 ${
-              summaryType === 'tldr' ? 'bg-indigo-50/60 border-indigo-600' : 'bg-white border-slate-200'
-            }`}
+            style={{
+              backgroundColor:
+                summaryType === 'tldr'
+                  ? isDarkMode
+                    ? '#1E1B4B'
+                    : '#EEF2FF'
+                  : isDarkMode
+                  ? '#1E293B'
+                  : '#FFFFFF',
+              borderColor:
+                summaryType === 'tldr'
+                  ? '#6366F1'
+                  : isDarkMode
+                  ? '#334155'
+                  : '#E2E8F0',
+            }}
+            className="p-4 rounded-2xl border flex-row items-center mb-3"
           >
             <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
-              summaryType === 'tldr' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+              summaryType === 'tldr' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-400'
             }`}>
               {summaryType === 'tldr' && <View className="w-2 h-2 rounded-full bg-white" />}
             </View>
-            <Text className="text-xs font-semibold text-slate-800 flex-1">
+            <Text
+              style={{ color: isDarkMode ? '#F8FAFC' : '#1E293B' }}
+              className="text-xs font-semibold flex-1"
+            >
               Tóm tắt TL;DR (Tổng quan ngắn gọn)
             </Text>
           </TouchableOpacity>
@@ -251,16 +326,33 @@ export default function NewDocumentScreen() {
           {/* Option 2: Key Takeaways */}
           <TouchableOpacity
             onPress={() => setSummaryType('detailed')}
-            className={`p-4 rounded-2xl border flex-row items-center mb-5 ${
-              summaryType === 'detailed' ? 'bg-indigo-50/60 border-indigo-600' : 'bg-white border-slate-200'
-            }`}
+            style={{
+              backgroundColor:
+                summaryType === 'detailed'
+                  ? isDarkMode
+                    ? '#1E1B4B'
+                    : '#EEF2FF'
+                  : isDarkMode
+                  ? '#1E293B'
+                  : '#FFFFFF',
+              borderColor:
+                summaryType === 'detailed'
+                  ? '#6366F1'
+                  : isDarkMode
+                  ? '#334155'
+                  : '#E2E8F0',
+            }}
+            className="p-4 rounded-2xl border flex-row items-center mb-5"
           >
             <View className={`w-5 h-5 rounded-full border-2 items-center justify-center mr-3 ${
-              summaryType === 'detailed' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-300'
+              summaryType === 'detailed' ? 'border-indigo-600 bg-indigo-600' : 'border-slate-400'
             }`}>
               {summaryType === 'detailed' && <View className="w-2 h-2 rounded-full bg-white" />}
             </View>
-            <Text className="text-xs font-bold text-slate-900 flex-1">
+            <Text
+              style={{ color: isDarkMode ? '#F8FAFC' : '#0F172A' }}
+              className="text-xs font-bold flex-1"
+            >
               Tóm tắt chi tiết & Luận điểm chính (Key Takeaways)
             </Text>
           </TouchableOpacity>
@@ -365,14 +457,35 @@ export default function NewDocumentScreen() {
 
           {/* Primary Action Button */}
           <TouchableOpacity
-            onPress={handleUpload}
+            onPress={selectedFile ? handleUpload : handlePickDocument}
             disabled={isProcessing}
-            className={`py-3.5 rounded-2xl flex-row items-center justify-center mb-3 shadow-md ${
-              isProcessing ? 'bg-indigo-400' : 'bg-indigo-700 shadow-indigo-300'
-            }`}
+            style={{
+              backgroundColor: isProcessing
+                ? '#6366F1'
+                : selectedFile
+                ? '#059669'
+                : '#4F46E5',
+              height: 50,
+            }}
+            className="rounded-2xl flex-row items-center justify-center mb-3 shadow-md"
           >
-            <Lock size={16} color="#FFF" className="mr-2" />
-            <Text className="text-white font-bold text-xs">Bắt đầu bóc tách tài liệu</Text>
+            {isProcessing ? (
+              <>
+                <ActivityIndicator size="small" color="#FFFFFF" className="mr-2" />
+                <Text className="text-white font-bold text-sm">
+                  Đang bóc tách & tóm tắt ({progressPercent}%)...
+                </Text>
+              </>
+            ) : (
+              <>
+                <UploadCloud size={18} color="#FFFFFF" className="mr-2" />
+                <Text className="text-white font-bold text-sm">
+                  {selectedFile
+                    ? 'Bắt đầu bóc tách tài liệu ngay'
+                    : 'Chọn tệp PDF / DOCX để tải lên'}
+                </Text>
+              </>
+            )}
           </TouchableOpacity>
 
           {/* Cancel Button */}

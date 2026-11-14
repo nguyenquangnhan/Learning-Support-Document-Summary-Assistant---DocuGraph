@@ -6,21 +6,24 @@ import {
   Users,
   UserRound,
 } from "lucide-react-native";
+import { useThemeStore } from "../../stores/themeStore";
 
 export default function TabLayout() {
+  const isDarkMode = useThemeStore((s) => s.isDarkMode);
+
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarStyle: {
-          backgroundColor: "#FFFFFF",
-          borderTopColor: "#E2E8F0",
+          backgroundColor: isDarkMode ? "#0F172A" : "#FFFFFF",
+          borderTopColor: isDarkMode ? "#1E293B" : "#E2E8F0",
           height: 66,
           paddingBottom: 6,
           paddingTop: 7,
         },
-        tabBarActiveTintColor: "#2447BA",
-        tabBarInactiveTintColor: "#64748B",
+        tabBarActiveTintColor: isDarkMode ? "#818CF8" : "#2447BA",
+        tabBarInactiveTintColor: isDarkMode ? "#64748B" : "#64748B",
         tabBarLabelStyle: { fontSize: 10, fontWeight: "500" },
       }}
     >
