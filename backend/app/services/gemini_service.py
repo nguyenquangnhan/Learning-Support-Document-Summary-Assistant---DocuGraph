@@ -12,6 +12,24 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Models ordered by reliability & quota availability on Free Tier
+FALLBACK_MODELS = [
+    "gemini-3.5-flash-lite",
+    "gemini-3.5-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-2.5-flash",
+]
+
+
+def _get_candidate_models() -> list[str]:
+    primary = (settings.GEMINI_MODEL or "gemini-3.5-flash-lite").strip()
+    models = [primary]
+    for m in FALLBACK_MODELS:
+        if m not in models:
+            models.append(m)
+    return models
+
+
 # Initialize client if key is configured
 def get_client() -> genai.Client | None:
     api_key = (settings.GEMINI_API_KEY or "").strip()
@@ -19,8 +37,14 @@ def get_client() -> genai.Client | None:
         return None
     try:
         # Force Gemini Developer API endpoint (generativelanguage.googleapis.com)
-        # so both AIzaSy... and AQ.Ab8RN6... keys work without requiring GCP Vertex AI project activation
-        return genai.Client(api_key=api_key, vertexai=False)
+        # Disable built-in slow tenacity retries on 429 so we can immediately switch to fallback models
+        return genai.Client(
+            api_key=api_key,
+            vertexai=False,
+            http_options=types.HttpOptions(
+                retry_options=types.HttpRetryOptions(attempts=1)
+            ),
+        )
     except Exception as e:
         logger.warning(f"Could not initialize Gemini Client: {e}")
         return None
@@ -67,25 +91,29 @@ async def embed_batch(texts: list[str]) -> list[list[float]]:
 
 
 async def generate_stream(prompt: str, system_prompt: str = ""):
-    """Streaming text generation – async generator yielding text chunks."""
+    """Streaming text generation – async generator yielding text chunks with multi-model fallback."""
     client = get_client()
     if client:
-        try:
-            config = types.GenerateContentConfig(
-                temperature=0.1,
-                max_output_tokens=8192,
-                system_instruction=system_prompt or None,
-            )
-            async for chunk in await client.aio.models.generate_content_stream(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=config,
-            ):
-                if chunk.text:
-                    yield chunk.text
-            return
-        except Exception as e:
-            logger.warning(f"Gemini generate_stream failed: {e}. Yielding fallback response.")
+        config = types.GenerateContentConfig(
+            temperature=0.1,
+            max_output_tokens=8192,
+            system_instruction=system_prompt or None,
+        )
+        for model_name in _get_candidate_models():
+            try:
+                yielded = False
+                async for chunk in await client.aio.models.generate_content_stream(
+                    model=model_name,
+                    contents=prompt,
+                    config=config,
+                ):
+                    if chunk.text:
+                        yielded = True
+                        yield chunk.text
+                if yielded:
+                    return
+            except Exception as e:
+                logger.warning(f"Gemini generate_stream failed on {model_name}: {e}. Trying next model...")
     
     # Return empty so caller (e.g., rag_service) can fall back to grounded document synthesis
     return
@@ -93,25 +121,29 @@ async def generate_stream(prompt: str, system_prompt: str = ""):
 
 async def generate_json(prompt: str, system_prompt: str = "") -> str:
     """
-    Non-streaming structured JSON output.
+    Non-streaming structured JSON output with automatic model fallback on 429 quota limits.
     Used for: entity extraction, quiz generation, mindmap JSON.
     """
     client = get_client()
     if client:
-        try:
-            config = types.GenerateContentConfig(
-                temperature=0.0,
-                response_mime_type="application/json",
-                system_instruction=system_prompt or None,
-            )
-            response = await client.aio.models.generate_content(
-                model=settings.GEMINI_MODEL,
-                contents=prompt,
-                config=config,
-            )
-            if response.text:
-                return response.text
-        except Exception as e:
-            logger.warning(f"Gemini generate_json failed: {e}")
-            raise e
+        config = types.GenerateContentConfig(
+            temperature=0.0,
+            response_mime_type="application/json",
+            system_instruction=system_prompt or None,
+        )
+        last_err = None
+        for model_name in _get_candidate_models():
+            try:
+                response = await client.aio.models.generate_content(
+                    model=model_name,
+                    contents=prompt,
+                    config=config,
+                )
+                if response.text:
+                    return response.text
+            except Exception as e:
+                last_err = e
+                logger.warning(f"Gemini generate_json failed on {model_name}: {e}. Trying next model...")
+        if last_err:
+            raise last_err
     raise ValueError("Gemini Client is not configured or failed to generate JSON.")
