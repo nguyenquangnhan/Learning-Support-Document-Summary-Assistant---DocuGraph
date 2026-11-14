@@ -87,6 +87,7 @@ export default function GroupScreen() {
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [showShareDocModal, setShowShareDocModal] = useState(false);
   const [showMembersListModal, setShowMembersListModal] = useState(false);
+  const [showDeleteGroupModal, setShowDeleteGroupModal] = useState(false);
 
   // Inputs state
   const [newGroupName, setNewGroupName] = useState("");
@@ -123,9 +124,9 @@ export default function GroupScreen() {
           const raw = await AsyncStorage.getItem(storageKey);
           if (raw) {
             const parsed: StudyGroup[] = JSON.parse(raw);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed)) {
               setGroups(parsed);
-              setSelectedGroupId(parsed[0].id);
+              setSelectedGroupId(parsed[0]?.id || "");
               return;
             }
           }
@@ -369,6 +370,17 @@ export default function GroupScreen() {
     showToast("Đã xóa thành viên khỏi nhóm.");
   };
 
+  // 5b. Delete Active Study Group
+  const handleDeleteActiveGroup = async () => {
+    if (!activeGroup) return;
+    const deletedName = activeGroup.name;
+    const remaining = groups.filter((g) => g.id !== activeGroup.id);
+    await persistGroups(remaining);
+    setSelectedGroupId(remaining[0]?.id || "");
+    setShowDeleteGroupModal(false);
+    showToast(`Đã xóa nhóm "${deletedName}" thành công!`);
+  };
+
   // 6. Save Shared Document for Offline Learning (SSOT Local Cache)
   const handleSaveOffline = async (res: SharedResource) => {
     try {
@@ -529,10 +541,22 @@ export default function GroupScreen() {
 
           {activeGroup ? (
             <>
-              {/* Title & Group Info */}
-              <Text className="text-2xl font-black text-slate-900 mb-3">
-                {activeGroup.name}
-              </Text>
+              {/* Title & Delete Group Button */}
+              <View className="flex-row items-start justify-between mb-3">
+                <Text
+                  style={{ color: isDarkMode ? "#F8FAFC" : "#0F172A" }}
+                  className="text-2xl font-black flex-1 mr-3"
+                >
+                  {activeGroup.name}
+                </Text>
+                <TouchableOpacity
+                  onPress={() => setShowDeleteGroupModal(true)}
+                  className="flex-row items-center bg-red-50 border border-red-200 px-3 py-2 rounded-xl"
+                >
+                  <Trash2 size={14} color="#EF4444" />
+                  <Text className="text-xs font-bold text-red-600 ml-1">Xóa nhóm</Text>
+                </TouchableOpacity>
+              </View>
 
               <View className="flex-row items-center justify-between mb-4">
                 <TouchableOpacity
@@ -782,15 +806,50 @@ export default function GroupScreen() {
               {/* Vào Sảnh Đấu trí để nhập mã phòng */}
               <TouchableOpacity
                 onPress={() => router.push("/battle" as any)}
-                className="bg-slate-100 border border-slate-200 py-3 rounded-2xl flex-row items-center justify-center mb-6"
+                className="bg-slate-100 border border-slate-200 py-3 rounded-2xl flex-row items-center justify-center mb-3"
               >
                 <Users size={16} color="#475569" />
                 <Text className="text-slate-700 font-semibold text-xs ml-2">
                   Đã có mã phòng? Vào Sảnh Đấu trí nhập mã
                 </Text>
               </TouchableOpacity>
+
+              {/* Nút Xóa / Giải tán nhóm học tập */}
+              <TouchableOpacity
+                onPress={() => setShowDeleteGroupModal(true)}
+                className="bg-red-50 border border-red-200 py-3 rounded-2xl flex-row items-center justify-center mb-6"
+              >
+                <Trash2 size={15} color="#EF4444" />
+                <Text className="text-red-600 font-bold text-xs ml-2">
+                  Xóa / Rời khỏi nhóm học tập này
+                </Text>
+              </TouchableOpacity>
             </>
-          ) : null}
+          ) : (
+            <View className="bg-white p-7 rounded-2xl border border-slate-200 items-center my-6">
+              <Users size={36} color="#6366F1" />
+              <Text className="text-base font-bold text-slate-800 mt-3">
+                Bạn chưa tham gia nhóm học tập nào
+              </Text>
+              <Text className="text-xs text-slate-500 text-center mt-1 mb-4 leading-5">
+                Hãy tạo một nhóm học tập mới hoặc nhập mã PIN 6 ký tự từ bạn bè để cùng chia sẻ tài liệu và thi đấu Quiz!
+              </Text>
+              <View className="flex-row gap-2.5">
+                <TouchableOpacity
+                  onPress={() => setShowJoinGroupModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-50 border border-indigo-200"
+                >
+                  <Text className="text-xs font-bold text-indigo-700">Nhập mã nhóm</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setShowCreateGroupModal(true)}
+                  className="px-4 py-2.5 rounded-xl bg-indigo-600"
+                >
+                  <Text className="text-xs font-bold text-white">+ Tạo nhóm mới</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
         </View>
       </ScrollView>
 
@@ -1021,6 +1080,43 @@ export default function GroupScreen() {
                 ))}
               </ScrollView>
             )}
+          </View>
+        </View>
+      </Modal>
+
+      {/* Modal 6: Xác nhận Xóa / Giải tán nhóm học tập */}
+      <Modal
+        visible={showDeleteGroupModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowDeleteGroupModal(false)}
+      >
+        <View className="flex-1 bg-slate-900/55 justify-center items-center p-5">
+          <View className="bg-white w-full max-w-[360px] rounded-2xl p-5 border border-slate-200">
+            <Text className="text-base font-bold text-slate-900 mb-2">
+              Xóa nhóm học tập?
+            </Text>
+            <Text className="text-xs text-slate-500 leading-5 mb-4">
+              Bạn có chắc chắn muốn xóa nhóm{" "}
+              <Text className="font-bold text-slate-800">
+                "{activeGroup?.name}"
+              </Text>{" "}
+              (Mã: {activeGroup?.code}) không? Các tài liệu cá nhân trong Tủ sách của bạn vẫn được giữ nguyên.
+            </Text>
+            <View className="flex-row gap-2.5">
+              <TouchableOpacity
+                onPress={() => setShowDeleteGroupModal(false)}
+                className="flex-1 py-3 rounded-xl bg-slate-100 items-center"
+              >
+                <Text className="text-xs font-bold text-slate-600">Hủy bỏ</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={handleDeleteActiveGroup}
+                className="flex-1 py-3 rounded-xl bg-red-600 items-center"
+              >
+                <Text className="text-xs font-bold text-white">Xóa nhóm ngay</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </View>
       </Modal>
