@@ -2,7 +2,12 @@
 DocuGraph AI – Configuration (pydantic-settings)
 Reads from .env file automatically.
 """
+from pathlib import Path
 from pydantic_settings import BaseSettings
+
+_BACKEND_DIR = Path(__file__).resolve().parent.parent.parent
+_ENV_FILE = _BACKEND_DIR / ".env"
+
 
 
 class Settings(BaseSettings):
@@ -44,7 +49,7 @@ class Settings(BaseSettings):
     FRONTEND_URL: str = "http://localhost:3000"
 
     class Config:
-        env_file = ".env"
+        env_file = (str(_ENV_FILE), ".env")
         env_file_encoding = "utf-8"
         extra = "ignore"
 

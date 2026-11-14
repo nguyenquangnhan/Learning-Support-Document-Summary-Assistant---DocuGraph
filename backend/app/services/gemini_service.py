@@ -14,11 +14,13 @@ logger = logging.getLogger(__name__)
 
 # Initialize client if key is configured
 def get_client() -> genai.Client | None:
-    api_key = settings.GEMINI_API_KEY
+    api_key = (settings.GEMINI_API_KEY or "").strip()
     if not api_key or api_key in ("mock-gemini-key", "your-gemini-api-key-here", "change-me"):
         return None
     try:
-        return genai.Client(api_key=api_key)
+        # Force Gemini Developer API endpoint (generativelanguage.googleapis.com)
+        # so both AIzaSy... and AQ.Ab8RN6... keys work without requiring GCP Vertex AI project activation
+        return genai.Client(api_key=api_key, vertexai=False)
     except Exception as e:
         logger.warning(f"Could not initialize Gemini Client: {e}")
         return None
@@ -33,30 +35,32 @@ def _mock_embedding(text: str, dim: int = 768) -> list[float]:
 
 
 async def embed_text(text: str) -> list[float]:
-    """Convert a single text → 768-dim vector using text-embedding-004."""
+    """Convert a single text → 768-dim vector using gemini-embedding-001."""
     client = get_client()
     if client:
         try:
             response = await client.aio.models.embed_content(
                 model=settings.GEMINI_EMBEDDING_MODEL,
                 contents=text,
+                config=types.EmbedContentConfig(output_dimensionality=768),
             )
-            return response.embeddings[0].values
+            return response.embeddings[0].values[:768]
         except Exception as e:
             logger.warning(f"Gemini embed_text failed: {e}. Using deterministic fallback.")
     return _mock_embedding(text)
 
 
 async def embed_batch(texts: list[str]) -> list[list[float]]:
-    """Batch embed multiple texts."""
+    """Batch embed multiple texts into 768-dim vectors."""
     client = get_client()
     if client:
         try:
             response = await client.aio.models.embed_content(
                 model=settings.GEMINI_EMBEDDING_MODEL,
                 contents=texts,
+                config=types.EmbedContentConfig(output_dimensionality=768),
             )
-            return [emb.values for emb in response.embeddings]
+            return [emb.values[:768] for emb in response.embeddings]
         except Exception as e:
             logger.warning(f"Gemini embed_batch failed: {e}. Using fallback.")
     return [_mock_embedding(t) for t in texts]
@@ -83,14 +87,8 @@ async def generate_stream(prompt: str, system_prompt: str = ""):
         except Exception as e:
             logger.warning(f"Gemini generate_stream failed: {e}. Yielding fallback response.")
     
-    # Fallback streaming
-    fallback_response = (
-        "Xin chào! Dựa trên ngữ cảnh tài liệu đã được phân tích, các khái niệm chính "
-        "đã được trích xuất vào Đồ thị Tri thức (Knowledge Graph). "
-        "Vui lòng cấu hình GEMINI_API_KEY trong file backend/.env để nhận câu trả lời phân tích sâu theo thời gian thực."
-    )
-    for word in fallback_response.split(" "):
-        yield word + " "
+    # Return empty so caller (e.g., rag_service) can fall back to grounded document synthesis
+    return
 
 
 async def generate_json(prompt: str, system_prompt: str = "") -> str:
